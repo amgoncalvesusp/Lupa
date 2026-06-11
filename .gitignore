@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+build/
+dist/
+*.spec
+!Lupa.spec
+.venv/
+venv/
+venv_build/
+.pytest_cache/
+.coverage
+installer/Output/
+gen_files.py
+gen_gui.py
