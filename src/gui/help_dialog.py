@@ -5,20 +5,20 @@ from PyQt6.QtWidgets import QDialog, QHBoxLayout, QPushButton, QTextBrowser, QVB
 
 HELP_HTML = """
 <style>
-    body { font-family: "Segoe UI", sans-serif; color: #cdd6f4; font-size: 11pt; line-height: 1.55; }
-    h1 { color: #f5e0dc; font-size: 18pt; margin-top: 12px; }
-    h2 { color: #cba6f7; font-size: 14pt; margin-top: 18px; padding-bottom: 4px; }
-    h3 { color: #f9e2af; font-size: 12pt; margin-top: 14px; }
-    code { background: #313244; color: #f5e0dc; padding: 2px 6px; border-radius: 4px; }
-    pre { background: #181825; color: #cdd6f4; padding: 12px; border-radius: 8px;
-          border-left: 3px solid #cba6f7; }
-    .tip { background: #181825; padding: 12px; border-left: 3px solid #a6e3a1;
+    body { font-family: "Segoe UI", sans-serif; color: #1f2933; font-size: 11pt; line-height: 1.55; }
+    h1 { color: #103d3a; font-family: "Georgia", serif; font-size: 18pt; margin-top: 12px; }
+    h2 { color: #0f766e; font-size: 14pt; margin-top: 18px; padding-bottom: 4px; }
+    h3 { color: #b5670a; font-size: 12pt; margin-top: 14px; }
+    code { background: #e9f1ef; color: #115e59; padding: 2px 6px; border-radius: 4px; }
+    pre { background: #faf7f0; color: #1f2933; padding: 12px; border-radius: 8px;
+          border-left: 3px solid #0f766e; }
+    .tip { background: #eef6f4; padding: 12px; border-left: 3px solid #0f766e;
            border-radius: 6px; margin: 10px 0; }
-    .warn { background: #181825; padding: 12px; border-left: 3px solid #f9e2af;
+    .warn { background: #fbf2e5; padding: 12px; border-left: 3px solid #b5670a;
             border-radius: 6px; margin: 10px 0; }
     ul { margin-left: 8px; padding-left: 16px; }
     li { margin: 4px 0; }
-    .key { background: #45475a; color: #f5e0dc; padding: 2px 8px; border-radius: 4px;
+    .key { background: #e4ddcf; color: #1f2933; padding: 2px 8px; border-radius: 4px;
            font-family: monospace; font-size: 10pt; }
 </style>
 
@@ -126,9 +126,9 @@ resiliência
 
 <p>Cada documento recebe uma classificação:</p>
 <ul>
-    <li><b style="color:#a6e3a1;">Alto</b> — Extração limpa, ≥95% das páginas com texto, pouco ou nenhum OCR.</li>
-    <li><b style="color:#f9e2af;">Médio</b> — 80–95% das páginas com texto, ou uso intensivo de OCR.</li>
-    <li><b style="color:#f38ba8;">Baixo</b> — Menos de 80% das páginas com texto extraído.</li>
+    <li><b style="color:#15803d;">Alto</b> — Extração limpa, ≥95% das páginas com texto, pouco ou nenhum OCR.</li>
+    <li><b style="color:#b5670a;">Médio</b> — 80–95% das páginas com texto, ou uso intensivo de OCR.</li>
+    <li><b style="color:#b4413c;">Baixo</b> — Menos de 80% das páginas com texto extraído.</li>
 </ul>
 
 <h2>Estrutura do XLSX exportado</h2>
@@ -157,7 +157,7 @@ class HelpDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Como usar — Lupa")
         self.resize(900, 740)
-        self.setStyleSheet("QDialog { background-color: #1e1e2e; }")
+        self.setStyleSheet("QDialog { background-color: #f4f1ea; }")
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -167,23 +167,24 @@ class HelpDialog(QDialog):
         browser.setHtml(HELP_HTML)
         browser.setStyleSheet("""
             QTextBrowser {
-                background-color: #1e1e2e;
-                color: #cdd6f4;
-                border: 1px solid #313244;
-                border-radius: 8px;
+                background-color: #ffffff;
+                color: #1f2933;
+                border: 1px solid #e4ddcf;
+                border-radius: 10px;
                 padding: 16px;
                 font-size: 11pt;
             }
             QScrollBar:vertical {
-                background: #181825;
+                background: transparent;
                 width: 12px;
                 border-radius: 6px;
             }
             QScrollBar::handle:vertical {
-                background: #45475a;
+                background: #cdc4b0;
                 border-radius: 6px;
                 min-height: 30px;
             }
+            QScrollBar::handle:vertical:hover { background: #0f766e; }
         """)
         layout.addWidget(browser)
 
@@ -192,15 +193,15 @@ class HelpDialog(QDialog):
         btn_close = QPushButton("Fechar")
         btn_close.setStyleSheet("""
             QPushButton {
-                background-color: #cba6f7;
-                color: #1e1e2e;
+                background-color: #0f766e;
+                color: #ffffff;
                 border: none;
-                border-radius: 8px;
+                border-radius: 9px;
                 padding: 10px 24px;
                 font-weight: 600;
                 min-width: 100px;
             }
-            QPushButton:hover { background-color: #b4befe; }
+            QPushButton:hover { background-color: #0d9488; }
         """)
         btn_close.clicked.connect(self.accept)
         btn_row.addWidget(btn_close)

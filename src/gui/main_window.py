@@ -4,7 +4,14 @@ from pathlib import Path
 from typing import List
 
 from PyQt6.QtCore import Qt, QThread
-from PyQt6.QtGui import QAction, QDragEnterEvent, QDropEvent, QKeySequence, QShortcut
+from PyQt6.QtGui import (
+    QAction,
+    QColor,
+    QDragEnterEvent,
+    QDropEvent,
+    QKeySequence,
+    QShortcut,
+)
 from PyQt6.QtWidgets import (
     QCheckBox,
     QFileDialog,
@@ -45,7 +52,9 @@ class DropZone(QFrame):
         layout = QVBoxLayout(self)
         self.label = QLabel('Arraste PDFs aqui ou clique em "Adicionar Arquivos"')
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.label.setStyleSheet("color: #a6adc8; font-size: 11pt; padding: 14px;")
+        self.label.setStyleSheet(
+            "color: #6b7280; font-size: 11pt; padding: 14px; background: transparent;"
+        )
         layout.addWidget(self.label)
 
     def dragEnterEvent(self, event: QDragEnterEvent):
@@ -101,14 +110,7 @@ class MainWindow(QMainWindow):
 
     def _build_menu(self):
         menubar = self.menuBar()
-        menubar.setStyleSheet("""
-            QMenuBar { background-color: #181825; color: #cdd6f4; border-bottom: 1px solid #313244; padding: 4px; }
-            QMenuBar::item { padding: 6px 12px; }
-            QMenuBar::item:selected { background-color: #313244; color: #cba6f7; }
-            QMenu { background-color: #1e1e2e; color: #cdd6f4; border: 1px solid #313244; padding: 4px; }
-            QMenu::item { padding: 6px 24px; }
-            QMenu::item:selected { background-color: #313244; color: #cba6f7; }
-        """)
+        # Menu styling comes from the global stylesheet (styles.STYLE).
         file_menu = menubar.addMenu("&Arquivo")
         act_add = QAction("Adicionar PDFs...", self)
         act_add.setShortcut("Ctrl+O")
@@ -143,27 +145,39 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(20, 14, 20, 14)
         main_layout.setSpacing(10)
 
-        title_row = QHBoxLayout()
+        header_band = QFrame()
+        header_band.setObjectName("HeaderBand")
+        band_layout = QHBoxLayout(header_band)
+        band_layout.setContentsMargins(24, 18, 24, 18)
+
+        title_col = QVBoxLayout()
+        title_col.setSpacing(2)
         title = QLabel("Lupa")
         title.setObjectName("Title")
-        title_row.addWidget(title)
-        title_row.addStretch()
-        self.btn_help = QPushButton("❓  Como usar")
-        self.btn_help.clicked.connect(self.show_help)
-        title_row.addWidget(self.btn_help)
-        main_layout.addLayout(title_row)
-
+        title_col.addWidget(title)
         subtitle = QLabel(
             "Análise de conteúdo e métricas textuais de PDFs — sentimento, "
             "legibilidade, frequência, concordância (KWIC) e busca de termos"
         )
         subtitle.setObjectName("Subtitle")
-        main_layout.addWidget(subtitle)
+        subtitle.setWordWrap(True)
+        title_col.addWidget(subtitle)
+        band_layout.addLayout(title_col, stretch=1)
+
+        self.btn_help = QPushButton("❓  Como usar")
+        self.btn_help.setObjectName("GhostButton")
+        self.btn_help.clicked.connect(self.show_help)
+        band_layout.addWidget(self.btn_help, alignment=Qt.AlignmentFlag.AlignTop)
+        main_layout.addWidget(header_band)
 
         self.drop_zone = DropZone(self.add_files)
         main_layout.addWidget(self.drop_zone)
 
-        file_row = QHBoxLayout()
+        options_card = QFrame()
+        options_card.setObjectName("Card")
+        file_row = QHBoxLayout(options_card)
+        file_row.setContentsMargins(14, 12, 14, 12)
+        file_row.setSpacing(10)
         self.btn_add = QPushButton("➕  Adicionar Arquivos")
         self.btn_clear = QPushButton("🗑  Limpar Lista")
         self.btn_clear.setObjectName("DangerButton")
@@ -204,15 +218,14 @@ class MainWindow(QMainWindow):
         file_row.addWidget(self.kwic_checkbox)
         file_row.addWidget(self.sentiment_checkbox)
         file_row.addWidget(self.ocr_checkbox)
-        main_layout.addLayout(file_row)
+        main_layout.addWidget(options_card)
 
         self.btn_add.clicked.connect(self.browse_files)
         self.btn_clear.clicked.connect(self.clear_files)
 
         # Splitter: files list + search terms
         splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setHandleWidth(10)
-        splitter.setStyleSheet("QSplitter::handle { background: #313244; }")
+        splitter.setHandleWidth(14)
 
         left_box = QWidget()
         left_layout = QVBoxLayout(left_box)
@@ -249,18 +262,7 @@ class MainWindow(QMainWindow):
             '"mudança do clima"\n'
             "# linhas começando com # são ignoradas"
         )
-        self.terms_input.setStyleSheet("""
-            QPlainTextEdit {
-                background-color: #181825;
-                color: #cdd6f4;
-                border: 1px solid #313244;
-                border-radius: 8px;
-                padding: 10px;
-                font-family: "Consolas", "Cascadia Code", monospace;
-                font-size: 10pt;
-            }
-            QPlainTextEdit:focus { border-color: #cba6f7; }
-        """)
+        # Input styling comes from the global stylesheet (styles.STYLE).
         right_layout.addWidget(self.terms_input)
         splitter.addWidget(right_box)
         splitter.setStretchFactor(0, 3)
@@ -497,11 +499,11 @@ class MainWindow(QMainWindow):
             item = QTableWidgetItem(value)
             if col == conf_col:
                 if value == "Alto":
-                    item.setForeground(Qt.GlobalColor.green)
+                    item.setForeground(QColor("#15803d"))
                 elif value == "Médio":
-                    item.setForeground(Qt.GlobalColor.yellow)
+                    item.setForeground(QColor("#b5670a"))
                 else:
-                    item.setForeground(Qt.GlobalColor.red)
+                    item.setForeground(QColor("#b4413c"))
             self.results_table.setItem(row, col, item)
 
         next_col = len(cells)
@@ -510,9 +512,9 @@ class MainWindow(QMainWindow):
             item_cls = QTableWidgetItem(classe)
             item_cls.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             if classe == "Positivo":
-                item_cls.setForeground(Qt.GlobalColor.green)
+                item_cls.setForeground(QColor("#15803d"))
             elif classe == "Negativo":
-                item_cls.setForeground(Qt.GlobalColor.red)
+                item_cls.setForeground(QColor("#b4413c"))
             self.results_table.setItem(row, next_col, item_cls)
 
             comp = QTableWidgetItem(str(result.get("sent_compound_medio", "")))
