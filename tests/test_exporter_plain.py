@@ -61,6 +61,7 @@ def test_detail_csvs_are_created_only_when_data_exists(tmp_path):
     assert not (tmp_path / "ngramas.csv").exists()
     assert not (tmp_path / "categorias.csv").exists()
     assert not (tmp_path / "kwic.csv").exists()
+    assert (tmp_path / "metodologia.txt").exists()
 
 
 def test_csv_writes_all_detail_file_types_when_present(tmp_path):
@@ -96,12 +97,17 @@ def test_csv_writes_all_detail_file_types_when_present(tmp_path):
 
 def test_json_round_trip_keeps_public_result_data(tmp_path):
     out = tmp_path / "resultados.json"
-    export_to_json([_result(filename="doc.pdf", words_total=42)], out)
+    export_to_json(
+        [_result(filename="doc.pdf", words_total=42)],
+        out,
+        methodology_options={"generated_at": "2026-06-12T10:00:00"},
+    )
 
     with out.open(encoding="utf-8") as fh:
         data = json.load(fh)
 
     assert data["gerado_por"] == "Lupa 1.0"
+    assert data["metodologia"]["gerado_em"] == "2026-06-12T10:00:00"
     assert data["documentos"][0]["filename"] == "doc.pdf"
     assert data["documentos"][0]["words_total"] == 42
 

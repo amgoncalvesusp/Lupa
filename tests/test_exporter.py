@@ -29,6 +29,26 @@ def _result(**overrides):
     return base
 
 
+def test_methodology_sheet_created_and_records_options(tmp_path):
+    out = tmp_path / "r.xlsx"
+    specs = build_column_specs(build_default_analyzers([], detect_sentiment=False))
+    export_to_xlsx(
+        [_result()],
+        str(out),
+        specs,
+        methodology_options={
+            "generated_at": "2026-06-12T10:00:00",
+            "flags": {"ocr": False, "sentimento": False},
+            "termos_raw": "clima",
+        },
+    )
+    ws = openpyxl.load_workbook(out)["Metodologia"]
+    values = [cell.value for row in ws.iter_rows() for cell in row if cell.value]
+    assert "2026-06-12T10:00:00" in values
+    assert any("ocr: não" in str(value) for value in values)
+    assert "clima" in values
+
+
 def test_export_creates_main_and_excluded_sheets(tmp_path):
     out = tmp_path / "r.xlsx"
     specs = build_column_specs(build_default_analyzers([], detect_sentiment=False))

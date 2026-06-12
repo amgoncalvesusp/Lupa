@@ -7,6 +7,7 @@ from typing import Any, Dict, Iterable, List, Optional
 
 from .analysis import ColumnSpec
 from .exporter import _infer_column_specs
+from .methodology_report import build_methodology_report, render_methodology_text
 
 APP_VERSION = "1.0"
 
@@ -15,6 +16,7 @@ def export_to_csv(
     results: List[Dict],
     output_dir: str | Path,
     column_specs: Optional[List[ColumnSpec]] = None,
+    methodology_options: Optional[Dict] = None,
 ) -> None:
     """Write the main result table and available detail tables as CSV files."""
     out_dir = Path(output_dir)
@@ -80,14 +82,24 @@ def export_to_csv(
         ["Nº Doc.", "Arquivo", "Página", "Motivo da Exclusão", "Palavras na Página"],
         _excluded_rows(results),
     )
+    report = build_methodology_report(results, methodology_options)
+    (out_dir / "metodologia.txt").write_text(
+        render_methodology_text(report),
+        encoding="utf-8",
+    )
 
 
-def export_to_json(results: List[Dict], output_path: str | Path) -> None:
+def export_to_json(
+    results: List[Dict],
+    output_path: str | Path,
+    methodology_options: Optional[Dict] = None,
+) -> None:
     """Write a single JSON file with complete public result dictionaries."""
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "gerado_por": f"Lupa {APP_VERSION}",
+        "metodologia": build_methodology_report(results, methodology_options),
         "documentos": [_remove_internal_keys(result) for result in results],
     }
     path.write_text(

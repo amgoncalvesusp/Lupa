@@ -10,6 +10,7 @@ from openpyxl.utils import get_column_letter
 
 from .analysis import ColumnSpec, build_column_specs, build_default_analyzers
 from .corpus_summary import build_corpus_summary, has_multiple_years
+from .methodology_report import build_methodology_report, flatten_methodology_rows
 
 HEADER_FILL = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
 TERM_HEADER_FILL = PatternFill(
@@ -29,6 +30,7 @@ def export_to_xlsx(
     results: List[Dict],
     output_path: str,
     column_specs: Optional[List[ColumnSpec]] = None,
+    methodology_options: Optional[Dict] = None,
 ) -> None:
     """Write results to XLSX.
 
@@ -78,6 +80,7 @@ def export_to_xlsx(
     _write_geography_sheet(wb, results)
     _write_cooccurrence_sheet(wb, results)
     _write_corpus_summary_sheet(wb, results)
+    _write_methodology_sheet(wb, results, methodology_options)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     wb.save(output_path)
@@ -514,3 +517,17 @@ def _write_corpus_summary_sheet(wb: Workbook, results: List[Dict]) -> None:
             ws.cell(row=row_idx, column=col_idx, value=value)
         _style_detail_row(ws, row_idx, len(values))
         row_idx += 1
+
+
+def _write_methodology_sheet(
+    wb: Workbook, results: List[Dict], methodology_options: Optional[Dict]
+) -> None:
+    report = build_methodology_report(results, methodology_options)
+    ws = _detail_sheet(wb, "Metodologia", ["Item", "Valor"], [30, 100])
+    for row_idx, (key, value) in enumerate(flatten_methodology_rows(report), start=2):
+        ws.cell(row=row_idx, column=1, value=key)
+        ws.cell(row=row_idx, column=2, value=value)
+        ws.cell(row=row_idx, column=2).alignment = Alignment(
+            vertical="top", wrap_text=True
+        )
+        _style_detail_row(ws, row_idx, 2)

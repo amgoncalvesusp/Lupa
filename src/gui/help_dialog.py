@@ -291,11 +291,13 @@ editável em <code>data/document_types.json</code>.</p>
 <h2>Exportação (XLSX, CSV, JSON)</h2>
 
 <p>O Lupa exporta os resultados em três formatos. O <b>XLSX</b> é a planilha
-formatada para leitura e auditoria manual. O <b>CSV</b> cria uma pasta com
-<code>resultados.csv</code> e arquivos de detalhe separados, usando separador
+formatada para leitura e auditoria manual e inclui a aba "Metodologia". O
+<b>CSV</b> cria uma pasta com <code>resultados.csv</code>,
+<code>metodologia.txt</code> e arquivos de detalhe separados, usando separador
 <code>;</code> e codificação <code>utf-8-sig</code> para melhor compatibilidade com
-Excel em português. O <b>JSON</b> preserva os dicionários públicos completos de
-cada documento, útil para arquivamento reprodutível e integração com R/Python.</p>
+Excel em português. O <b>JSON</b> preserva a metodologia e os dicionários públicos
+completos de cada documento, útil para arquivamento reprodutível e integração com
+R/Python.</p>
 
 <h3>Aba 1: Contagem de Palavras</h3>
 <p>Linha por documento. Colunas: identificação, metadados detectados, contagens,
@@ -324,9 +326,11 @@ foram definidos, duas colunas por termo (PDF Completo / Corpus Analítico).</p>
 <p>Cada ocorrência dos termos de busca com contexto à esquerda e à direita, página e termo.</p>
 
 <h3>Abas adicionais</h3>
-<p>Quando há dados, o XLSX também pode incluir: "Emoções (Palavras)",
-"Menções Territoriais", "Co-ocorrência" e "Síntese por Ano". Essas abas mantêm
-a trilha de auditoria dos novos agregados exibidos na tabela principal.</p>
+<p>O XLSX sempre inclui "Metodologia", com data, arquivos, flags, termos,
+configurações e critérios metodológicos. Quando há dados, também pode incluir:
+"Emoções (Palavras)", "Menções Territoriais", "Co-ocorrência" e "Síntese por
+Ano". Essas abas mantêm a trilha de auditoria dos agregados exibidos na tabela
+principal.</p>
 
 <h3>Arquivos CSV</h3>
 <p>Ao escolher CSV, o Lupa cria uma pasta com o nome selecionado. O arquivo
@@ -336,9 +340,10 @@ Arquivos de detalhe são criados apenas quando há dados: <code>sentencas.csv</c
 <code>kwic.csv</code> e <code>paginas_excluidas.csv</code>.</p>
 
 <h3>Arquivo JSON</h3>
-<p>O JSON contém <code>gerado_por</code> e <code>documentos</code>, com os resultados
-completos de cada documento. Chaves internas iniciadas por sublinhado são
-omitidas para expor apenas dados públicos da análise.</p>
+<p>O JSON contém <code>gerado_por</code>, <code>metodologia</code> e
+<code>documentos</code>, com os resultados completos de cada documento. Chaves
+internas iniciadas por sublinhado são omitidas para expor apenas dados públicos
+da análise.</p>
 
 <h2>Atalhos</h2>
 <ul>

@@ -708,7 +708,7 @@ class MainWindow(QMainWindow):
     def export_results(self):
         if not self.results:
             QMessageBox.information(
-                self, "Sem resultados", "Processe ao menos um PDF antes de exportar."
+                self, "Sem resultados", "Processe ao menos um documento antes de exportar."
             )
             return
         path, selected_filter = QFileDialog.getSaveFileName(
@@ -739,21 +739,50 @@ class MainWindow(QMainWindow):
                 categories=getattr(self, "_categories", []),
             )
             column_specs = build_column_specs(analyzers)
+            methodology_options = self._methodology_options()
             suffix = path_obj.suffix.lower()
             if suffix == ".csv":
                 output_dir = path_obj.with_suffix("")
-                export_to_csv(self.results, output_dir, column_specs)
+                export_to_csv(
+                    self.results,
+                    output_dir,
+                    column_specs,
+                    methodology_options=methodology_options,
+                )
                 exported_to = str(output_dir)
                 message = f"Arquivos CSV salvos em:\n{exported_to}"
             elif suffix == ".json":
-                export_to_json(self.results, path_obj)
+                export_to_json(
+                    self.results,
+                    path_obj,
+                    methodology_options=methodology_options,
+                )
                 exported_to = str(path_obj)
                 message = f"Arquivo JSON salvo em:\n{exported_to}"
             else:
-                export_to_xlsx(self.results, path_obj, column_specs)
+                export_to_xlsx(
+                    self.results,
+                    path_obj,
+                    column_specs,
+                    methodology_options=methodology_options,
+                )
                 exported_to = str(path_obj)
                 message = f"Arquivo XLSX salvo em:\n{exported_to}"
             QMessageBox.information(self, "Exportado", message)
             self.status_bar.showMessage(f"Exportado: {exported_to}")
         except Exception as e:
             QMessageBox.critical(self, "Erro ao exportar", str(e))
+
+    def _methodology_options(self):
+        return {
+            "termos_raw": self.terms_input.toPlainText(),
+            "arquivos": list(self.pdf_files),
+            "flags": {
+                "ocr": self.ocr_checkbox.isChecked(),
+                "sentimento": getattr(self, "_enable_sentiment", self.sentiment_checkbox.isChecked()),
+                "emocoes": getattr(self, "_enable_emotions", self.emotions_checkbox.isChecked()),
+                "presidente": getattr(self, "_enable_president", self.president_checkbox.isChecked()),
+                "metricas": getattr(self, "_enable_textmetrics", self.textmetrics_checkbox.isChecked()),
+                "kwic": getattr(self, "_enable_kwic", self.kwic_checkbox.isChecked()),
+            },
+        }

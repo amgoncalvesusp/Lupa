@@ -320,8 +320,10 @@ A análise pode ser ligada/desligada por uma caixa de seleção na interface.
 O Lupa exporta o mesmo lote processado em três formatos:
 
 - **XLSX**: planilha formatada para leitura, auditoria manual e compartilhamento.
-- **CSV**: cria uma pasta com `resultados.csv` e arquivos de detalhe quando houver dados (`sentencas.csv`, `palavras.csv`, `ngramas.csv`, `categorias.csv`, `kwic.csv`, `paginas_excluidas.csv`). Os arquivos usam separador `;` e `utf-8-sig` para compatibilidade com Excel em português.
-- **JSON**: arquivo único com `gerado_por` e `documentos`, preservando os resultados públicos completos de cada documento para arquivamento ou análise em R/Python.
+- **CSV**: cria uma pasta com `resultados.csv`, `metodologia.txt` e arquivos de detalhe quando houver dados (`sentencas.csv`, `palavras.csv`, `ngramas.csv`, `categorias.csv`, `kwic.csv`, `paginas_excluidas.csv`). Os arquivos usam separador `;` e `utf-8-sig` para compatibilidade com Excel em português.
+- **JSON**: arquivo único com `gerado_por`, `metodologia` e `documentos`, preservando os resultados públicos completos de cada documento para arquivamento ou análise em R/Python.
+
+Toda exportação inclui um **relatório metodológico automático** com data, arquivos, formatos, flags, termos/categorias, análises executadas, arquivos de configuração e critérios metodológicos. No XLSX, ele aparece na aba **"Metodologia"**.
 
 ### Projetos `.lupa.json`
 
