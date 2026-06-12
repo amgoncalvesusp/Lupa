@@ -9,11 +9,13 @@ Public surface:
 from typing import List, Tuple
 
 from .base import Analyzer, ColumnSpec, DocumentContext
+from .categories import CategoryAnalyzer
 from .doc_stats import DocStatsAnalyzer
 from .keywords import KeywordAnalyzer
 from .kwic import KwicAnalyzer
 from .lexical_diversity import LexicalDiversityAnalyzer
 from .metadata import MetadataAnalyzer
+from .ngrams import NgramAnalyzer
 from .readability import ReadabilityAnalyzer
 from .sentiment import SentimentAnalyzer
 from .term_search import TermSearchAnalyzer
@@ -21,6 +23,7 @@ from .word_count import WordCountAnalyzer
 
 __all__ = [
     "Analyzer",
+    "CategoryAnalyzer",
     "ColumnSpec",
     "DocumentContext",
     "DocStatsAnalyzer",
@@ -28,6 +31,7 @@ __all__ = [
     "KwicAnalyzer",
     "LexicalDiversityAnalyzer",
     "MetadataAnalyzer",
+    "NgramAnalyzer",
     "ReadabilityAnalyzer",
     "SentimentAnalyzer",
     "TermSearchAnalyzer",
@@ -43,6 +47,7 @@ def build_default_analyzers(
     detect_sentiment: bool = True,
     detect_textmetrics: bool = True,
     detect_kwic: bool = True,
+    categories=None,
 ) -> List[Analyzer]:
     """Standard analyzer set, in output-column order."""
     analyzers: List[Analyzer] = [
@@ -54,8 +59,11 @@ def build_default_analyzers(
         analyzers.append(ReadabilityAnalyzer())
         analyzers.append(LexicalDiversityAnalyzer())
         analyzers.append(KeywordAnalyzer())
+        analyzers.append(NgramAnalyzer())
     if detect_sentiment:
         analyzers.append(SentimentAnalyzer())
+    if categories:
+        analyzers.append(CategoryAnalyzer(categories))
     analyzers.append(TermSearchAnalyzer(search_terms or []))
     if detect_kwic:
         # Detail-only (no columns); produces concordance lines for the terms.

@@ -94,4 +94,5 @@ class KeywordAnalyzer:
 
         ranked: List[Tuple[str, int]] = counter.most_common(TOP_N_SHEET)
         cell = "; ".join(f"{w} ({c})" for w, c in ranked[:TOP_N_CELL])
-        return {"kw_top": cell, "keyword_freq": ranked}
+        # Full content-word counts feed corpus-level analyses (TF-IDF).
+        return {"kw_top": cell, "keyword_freq": ranked, "word_counts": dict(counter)}

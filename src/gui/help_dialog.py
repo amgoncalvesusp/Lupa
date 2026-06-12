@@ -44,21 +44,23 @@ HELP_HTML = """
     <li><b>Palavra simples:</b> <code>clima</code> — conta todas as ocorrências da palavra, ignorando acentos e maiúsculas/minúsculas.</li>
     <li><b>Expressão sem aspas:</b> <code>mudança do clima</code> — busca a sequência permitindo espaços variáveis entre palavras.</li>
     <li><b>Expressão com aspas (busca exata):</b> <code>"efeito estufa"</code> — exige correspondência literal da expressão entre limites de palavra.</li>
+    <li><b>Categoria (codificação):</b> <code>NOME: termo1, termo2, "frase"</code> —
+    soma as ocorrências de todos os termos membros em um único número por
+    categoria (categorias de codificação de Bardin). O nome vira coluna própria
+    na tabela e no XLSX; o detalhamento por termo membro fica na aba
+    "Categorias".</li>
     <li><b>Linha em branco</b> ou iniciada com <code>#</code> — ignorada (comentário).</li>
 </ul>
 
 <h3>Exemplo de entrada</h3>
-<pre># Termos relacionados a mitigação
+<pre># Termos individuais
 carbono
 desmatamento
 "efeito estufa"
-"mudança do clima"
-mitigação
 
-# Termos relacionados a adaptação
-adaptação
-resiliência
-"perdas e danos"</pre>
+# Categorias de codificação (somam os membros)
+MITIGAÇÃO: carbono, "efeito estufa", reflorestamento
+ADAPTAÇÃO: adaptação, resiliência, "perdas e danos"</pre>
 
 <div class="tip">
     <b>Acentos e maiúsculas:</b> A busca é case-insensitive e accent-insensitive por padrão. <code>clima</code> encontra <i>Clima</i>, <i>CLIMA</i>, <i>clíma</i> (caso ocorra erro de OCR).
@@ -210,6 +212,34 @@ não apenas contá-la. <b>Como:</b> mesma correspondência da busca de termos
 (sem distinção de acentos; frases compostas suportadas), janela de 15 palavras
 de cada lado.</p>
 
+<h3>N-gramas (expressões recorrentes)</h3>
+<p><b>O que mede:</b> as sequências de 2 e 3 palavras mais frequentes do corpus
+analítico — expressões como "desenvolvimento sustentável" que a frequência de
+palavras isoladas não captura; candidatas naturais a unidades de significação.
+<b>Como:</b> contagem sem distinção de acentos; o n-grama só é mantido se a
+primeira e a última palavra forem palavras de conteúdo (stopwords internas são
+permitidas, preservando "mudança <i>do</i> clima"); frequência mínima 2;
+top 30 na aba "N-gramas" e na tela de detalhes.</p>
+
+<h3>Categorias de codificação</h3>
+<p><b>O que mede:</b> a frequência de cada <i>categoria</i> definida pelo
+pesquisador (sintaxe <code>NOME: termo1, termo2</code>) — a soma das ocorrências
+dos termos membros. Operacionaliza a etapa de codificação da análise de conteúdo
+(Bardin, 2011): em vez de 20 colunas de termos, um número por categoria.
+<b>Como:</b> usa o mesmo mecanismo da busca de termos (mesmos números); o
+detalhamento por termo membro fica na aba "Categorias".</p>
+
+<h3>TF-IDF (termos distintivos)</h3>
+<p><b>O que mede:</b> as palavras <i>distintivas</i> de cada documento — não as
+mais frequentes, mas as que diferenciam um documento dos demais do lote.
+<b>Como:</b> <code>tf-idf(palavra, doc) = frequência × ln(N / nº de docs com a
+palavra)</code>. Palavras presentes em todos os documentos pontuam zero
+("desenvolvimento" em todo discurso oficial não distingue nada); palavras
+concentradas em um documento pontuam alto. Requer ao menos 2 documentos no lote;
+top 15 por documento na aba "TF-IDF (Termos Distintivos)".
+<b>Citar:</b> Salton, G. &amp; Buckley, C. (1988). <i>Term-weighting approaches
+in automatic text retrieval</i>. Information Processing &amp; Management, 24(5).</p>
+
 <h3>Detecção do tipo de documento</h3>
 <p><b>Como:</b> classificador por regras com pontuação: padrões de conteúdo das
 primeiras páginas (2 pontos por acerto) e do nome do arquivo (1 ponto) para cada
@@ -240,7 +270,16 @@ foram definidos, duas colunas por termo (PDF Completo / Corpus Analítico).</p>
 <h3>Aba 4: Frequência de Palavras</h3>
 <p>Ranking das palavras de conteúdo mais frequentes por documento (até 30), após remoção de stopwords.</p>
 
-<h3>Aba 5: Concordância (KWIC)</h3>
+<h3>Aba 5: N-gramas</h3>
+<p>Expressões de 2–3 palavras mais frequentes por documento, com a quantidade de palavras (N) e a frequência.</p>
+
+<h3>Aba 6: Categorias</h3>
+<p>Por documento e categoria: total da categoria e detalhamento por termo membro (presente apenas quando categorias são definidas).</p>
+
+<h3>Aba 7: TF-IDF (Termos Distintivos)</h3>
+<p>As 15 palavras mais distintivas de cada documento (presente apenas com 2+ documentos no lote).</p>
+
+<h3>Aba 8: Concordância (KWIC)</h3>
 <p>Cada ocorrência dos termos de busca com contexto à esquerda e à direita, página e termo.</p>
 
 <h2>Atalhos</h2>

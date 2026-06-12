@@ -1,5 +1,6 @@
 """Export results to XLSX using a dynamic, analyzer-driven column schema."""
 
+import math
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -68,6 +69,9 @@ def export_to_xlsx(
     _write_excluded_sheet(wb, results)
     _write_sentiment_sheet(wb, results)
     _write_keyword_sheet(wb, results)
+    _write_ngram_sheet(wb, results)
+    _write_category_sheet(wb, results)
+    _write_tfidf_sheet(wb, results)
     _write_kwic_sheet(wb, results)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
@@ -84,12 +88,21 @@ def _infer_column_specs(results: List[Dict]) -> List[ColumnSpec]:
                 seen.add(label)
                 exact = label.startswith('"') and label.endswith('"')
                 terms.append((label.strip('"') if exact else label, exact))
+    # Categories are reconstructed name-only (members unknown at infer time);
+    # the _cat_* values are already present in the result dicts.
+    cat_names: List[str] = []
+    for r in results:
+        for name in r.get("category_results", {}).keys():
+            if name not in cat_names:
+                cat_names.append(name)
+    categories = [(name, [(name, False)]) for name in cat_names]
     detect_sentiment = any("sent_n_sentencas" in r for r in results)
     detect_textmetrics = any("lex_ttr" in r for r in results)
     analyzers = build_default_analyzers(
         terms,
         detect_sentiment=detect_sentiment,
         detect_textmetrics=detect_textmetrics,
+        categories=categories,
     )
     return build_column_specs(analyzers)
 
@@ -263,3 +276,123 @@ def _write_kwic_sheet(wb: Workbook, results: List[Dict]) -> None:
                 if detail_row % 2 == 0:
                     ws.cell(row=detail_row, column=col).fill = ALT_ROW_FILL
             detail_row += 1
+
+
+def _detail_sheet(wb: Workbook, title: str, headers: List[str], widths: List[int]):
+    """Create a styled detail sheet with a frozen header row."""
+    ws = wb.create_sheet(title)
+    for col_idx, label in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=label)
+        cell.fill = TERM_HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = THIN_BORDER
+        ws.column_dimensions[get_column_letter(col_idx)].width = widths[col_idx - 1]
+    ws.row_dimensions[1].height = 28
+    ws.freeze_panes = "A2"
+    return ws
+
+
+def _style_detail_row(ws, row: int, n_cols: int) -> None:
+    for col in range(1, n_cols + 1):
+        ws.cell(row=row, column=col).border = THIN_BORDER
+        if row % 2 == 0:
+            ws.cell(row=row, column=col).fill = ALT_ROW_FILL
+
+
+def _write_ngram_sheet(wb: Workbook, results: List[Dict]) -> None:
+    """Recurring multi-word expressions — meaning-unit candidates (Bardin)."""
+    if not any(r.get("ngram_freq") for r in results):
+        return
+    ws = _detail_sheet(
+        wb, "N-gramas", ["Nº Doc.", "Arquivo", "Expressão", "N", "Frequência"],
+        [8, 32, 42, 6, 12],
+    )
+    row = 2
+    for doc_idx, result in enumerate(results, start=1):
+        for phrase, n, count in result.get("ngram_freq", []):
+            ws.cell(row=row, column=1, value=doc_idx)
+            ws.cell(row=row, column=2, value=result["filename"])
+            ws.cell(row=row, column=3, value=phrase)
+            ws.cell(row=row, column=4, value=n)
+            ws.cell(row=row, column=5, value=count)
+            _style_detail_row(ws, row, 5)
+            row += 1
+
+
+def _write_category_sheet(wb: Workbook, results: List[Dict]) -> None:
+    """Category coding breakdown: per-category totals and member-term counts."""
+    if not any(r.get("category_results") for r in results):
+        return
+    ws = _detail_sheet(
+        wb, "Categorias",
+        ["Nº Doc.", "Arquivo", "Categoria", "Termo", "PDF Completo", "Corpus Analítico"],
+        [8, 30, 24, 26, 14, 16],
+    )
+    bold = Font(bold=True, color="115E59")
+    row = 2
+    for doc_idx, result in enumerate(results, start=1):
+        for name, data in result.get("category_results", {}).items():
+            ws.cell(row=row, column=1, value=doc_idx)
+            ws.cell(row=row, column=2, value=result["filename"])
+            ws.cell(row=row, column=3, value=name).font = bold
+            ws.cell(row=row, column=4, value="(total da categoria)").font = bold
+            ws.cell(row=row, column=5, value=data["total"]).font = bold
+            ws.cell(row=row, column=6, value=data["analytical"]).font = bold
+            _style_detail_row(ws, row, 6)
+            row += 1
+            for label, counts in data.get("members", {}).items():
+                ws.cell(row=row, column=1, value=doc_idx)
+                ws.cell(row=row, column=2, value=result["filename"])
+                ws.cell(row=row, column=3, value=name)
+                ws.cell(row=row, column=4, value=label)
+                ws.cell(row=row, column=5, value=counts["total"])
+                ws.cell(row=row, column=6, value=counts["analytical"])
+                _style_detail_row(ws, row, 6)
+                row += 1
+
+
+TFIDF_TOP_N = 15
+
+
+def _write_tfidf_sheet(wb: Workbook, results: List[Dict]) -> None:
+    """Distinctive words per document via TF-IDF (Salton & Buckley, 1988).
+
+    tf-idf(w, d) = count(w, d) * ln(N / df(w)). Words present in every document
+    score zero (they are not distinctive). Requires at least two documents with
+    word counts.
+    """
+    docs = [r for r in results if r.get("word_counts")]
+    n_docs = len(docs)
+    if n_docs < 2:
+        return
+
+    df: Dict[str, int] = {}
+    for r in docs:
+        for word in r["word_counts"]:
+            df[word] = df.get(word, 0) + 1
+
+    ws = _detail_sheet(
+        wb, "TF-IDF (Termos Distintivos)",
+        ["Nº Doc.", "Arquivo", "Palavra", "Frequência", "TF-IDF"],
+        [8, 32, 28, 12, 12],
+    )
+    row = 2
+    for doc_idx, result in enumerate(results, start=1):
+        counts = result.get("word_counts")
+        if not counts:
+            continue
+        scored = [
+            (word, count, round(count * math.log(n_docs / df[word]), 3))
+            for word, count in counts.items()
+        ]
+        scored = [s for s in scored if s[2] > 0]
+        scored.sort(key=lambda s: s[2], reverse=True)
+        for word, count, score in scored[:TFIDF_TOP_N]:
+            ws.cell(row=row, column=1, value=doc_idx)
+            ws.cell(row=row, column=2, value=result["filename"])
+            ws.cell(row=row, column=3, value=word)
+            ws.cell(row=row, column=4, value=count)
+            ws.cell(row=row, column=5, value=score)
+            _style_detail_row(ws, row, 5)
+            row += 1

@@ -41,7 +41,7 @@ from src.gui.detail_dialog import ResultDetailDialog
 from src.core.analysis import build_column_specs, build_default_analyzers
 from src.core.exporter import export_to_xlsx
 from src.core.ocr_engine import configure_tesseract
-from src.core.term_search import parse_terms
+from src.core.term_search import parse_input
 
 
 class DropZone(QFrame):
@@ -287,6 +287,8 @@ class MainWindow(QMainWindow):
             "desmatamento\n"
             '"efeito estufa"           (aspas = busca exata)\n'
             '"mudança do clima"\n'
+            'MITIGAÇÃO: clima, carbono, "efeito estufa"\n'
+            "                          (categoria: soma os termos)\n"
             "# linhas começando com # são ignoradas"
         )
         # Input styling comes from the global stylesheet (styles.STYLE).
@@ -424,13 +426,14 @@ class MainWindow(QMainWindow):
             )
             return
 
-        search_terms = parse_terms(self.terms_input.toPlainText())
+        search_terms, categories = parse_input(self.terms_input.toPlainText())
         self._search_terms = search_terms
+        self._categories = categories
         self._enable_sentiment = self.sentiment_checkbox.isChecked()
         self._enable_president = self.president_checkbox.isChecked()
         self._enable_textmetrics = self.textmetrics_checkbox.isChecked()
         self._enable_kwic = self.kwic_checkbox.isChecked()
-        self._rebuild_results_table(search_terms)
+        self._rebuild_results_table(search_terms, categories)
 
         self.results.clear()
         self.btn_process.setEnabled(False)
@@ -451,6 +454,7 @@ class MainWindow(QMainWindow):
             enable_president=self._enable_president,
             enable_textmetrics=self._enable_textmetrics,
             enable_kwic=self._enable_kwic,
+            categories=categories,
         )
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.started.connect(self.worker.run)
@@ -461,7 +465,7 @@ class MainWindow(QMainWindow):
         self.worker.error.connect(self.on_error)
         self.worker_thread.start()
 
-    def _rebuild_results_table(self, search_terms):
+    def _rebuild_results_table(self, search_terms, categories=None):
         self._president_on = getattr(self, "_enable_president", True)
         base_headers = ["#", "Arquivo", "Ano", "Tipo"]
         base_widths = [40, 260, 70, 170]
@@ -477,6 +481,10 @@ class MainWindow(QMainWindow):
             base_widths += [110, 100]
         self._sentiment_cols = 2 if self._sentiment_on else 0
 
+        self._category_names = [name for name, _members in (categories or [])]
+        for name in self._category_names:
+            base_headers.append(f"{name}\n(Corpus)")
+
         self._term_labels = []
         for term, exact in search_terms:
             label = f'"{term}"' if exact else term
@@ -489,7 +497,11 @@ class MainWindow(QMainWindow):
             QHeaderView.ResizeMode.Interactive
         )
         self.results_table.setRowCount(0)
-        widths = base_widths + [110] * len(self._term_labels)
+        widths = (
+            base_widths
+            + [120] * len(self._category_names)
+            + [110] * len(self._term_labels)
+        )
         for i, w in enumerate(widths):
             self.results_table.setColumnWidth(i, w)
 
@@ -572,6 +584,15 @@ class MainWindow(QMainWindow):
             self.results_table.setItem(row, next_col + 1, comp)
             next_col += self._sentiment_cols
 
+        category_results = result.get("category_results", {})
+        for name in getattr(self, "_category_names", []):
+            count = category_results.get(name, {}).get("analytical", 0)
+            item = QTableWidgetItem(str(count))
+            item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            item.setForeground(QColor("#0f766e"))
+            self.results_table.setItem(row, next_col, item)
+            next_col += 1
+
         term_results = result.get("term_results", {})
         for i, label in enumerate(self._term_labels):
             count = term_results.get(label, {}).get("analytical", 0)
@@ -596,6 +617,7 @@ class MainWindow(QMainWindow):
                 detect_president=getattr(self, "_enable_president", True),
                 detect_sentiment=getattr(self, "_enable_sentiment", True),
                 detect_textmetrics=getattr(self, "_enable_textmetrics", True),
+                categories=getattr(self, "_categories", []),
             )
             column_specs = build_column_specs(analyzers)
             export_to_xlsx(self.results, path, column_specs)

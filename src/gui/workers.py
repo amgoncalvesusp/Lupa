@@ -22,6 +22,7 @@ class ProcessingWorker(QObject):
         enable_president: bool = True,
         enable_textmetrics: bool = True,
         enable_kwic: bool = True,
+        categories=None,
     ):
         super().__init__()
         self.pdf_paths = pdf_paths
@@ -31,6 +32,7 @@ class ProcessingWorker(QObject):
         self.enable_president = enable_president
         self.enable_textmetrics = enable_textmetrics
         self.enable_kwic = enable_kwic
+        self.categories = categories or []
         self._cancelled = False
 
     def cancel(self):
@@ -45,6 +47,7 @@ class ProcessingWorker(QObject):
             detect_president=self.enable_president,
             detect_textmetrics=self.enable_textmetrics,
             detect_kwic=self.enable_kwic,
+            categories=self.categories,
         )
 
         for idx, path in enumerate(self.pdf_paths):

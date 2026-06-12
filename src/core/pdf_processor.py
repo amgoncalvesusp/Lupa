@@ -29,6 +29,7 @@ class PDFProcessor:
         detect_president: bool = True,
         detect_textmetrics: bool = True,
         detect_kwic: bool = True,
+        categories=None,
     ):
         self.enable_ocr = enable_ocr
         self.ocr_lang = ocr_lang
@@ -44,6 +45,7 @@ class PDFProcessor:
                 detect_sentiment=detect_sentiment,
                 detect_textmetrics=detect_textmetrics,
                 detect_kwic=detect_kwic,
+                categories=categories,
             )
         )
 

@@ -1,7 +1,24 @@
 """Term and phrase search engine for analytical corpus."""
+
 import regex
 import unicodedata
 from typing import Dict, List, Tuple
+
+
+# A category line looks like  NOME DA CATEGORIA: termo1, termo2, "frase exata"
+# The name must not contain quotes or commas (so quoted phrases with colons are
+# still treated as plain terms).
+CATEGORY_LINE = regex.compile(r'^(?P<name>[^:"\',]+):(?P<members>.+)$')
+
+# (category name, [(term, exact_match), ...])
+Category = Tuple[str, List[Tuple[str, bool]]]
+
+
+def _parse_single_term(token: str) -> Tuple[str, bool]:
+    m = regex.match(r'^"(.+)"$|^\'(.+)\'$', token)
+    if m:
+        return ((m.group(1) or m.group(2)).strip(), True)
+    return (token, False)
 
 
 def parse_terms(raw_input: str) -> List[Tuple[str, bool]]:
@@ -12,19 +29,46 @@ def parse_terms(raw_input: str) -> List[Tuple[str, bool]]:
     - One term per line
     - Lines starting with # are ignored (comments)
     - Quotes around a term mark exact phrase match
+    - Category lines (NOME: t1, t2) are handled by parse_categories, not here
     """
     terms = []
     for line in raw_input.splitlines():
         line = line.strip()
+        if not line or line.startswith("#") or CATEGORY_LINE.match(line):
+            continue
+        terms.append(_parse_single_term(line))
+    return terms
+
+
+def parse_categories(raw_input: str) -> List[Category]:
+    """Parse category lines: ``NOME: termo1, termo2, "frase exata"``.
+
+    The counts of all member terms are summed into one figure per category
+    (Bardin's coding categories). Member terms follow the same quoting rules
+    as plain term lines.
+    """
+    categories: List[Category] = []
+    for line in raw_input.splitlines():
+        line = line.strip()
         if not line or line.startswith("#"):
             continue
-        m = regex.match(r'^"(.+)"$|^\'(.+)\'$', line)
-        if m:
-            phrase = m.group(1) or m.group(2)
-            terms.append((phrase.strip(), True))
-        else:
-            terms.append((line, False))
-    return terms
+        m = CATEGORY_LINE.match(line)
+        if not m:
+            continue
+        name = m.group("name").strip()
+        members = [
+            _parse_single_term(tok.strip())
+            for tok in m.group("members").split(",")
+            if tok.strip()
+        ]
+        if name and members:
+            categories.append((name, members))
+    return categories
+
+
+def parse_input(raw_input: str) -> Tuple[List[Tuple[str, bool]], List[Category]]:
+    """Split the search box into plain terms and coding categories."""
+    return parse_terms(raw_input), parse_categories(raw_input)
 
 
 def normalize(text: str, strip_accents: bool = True) -> str:
@@ -32,13 +76,16 @@ def normalize(text: str, strip_accents: bool = True) -> str:
     text = text.lower()
     if strip_accents:
         text = "".join(
-            c for c in unicodedata.normalize("NFD", text)
+            c
+            for c in unicodedata.normalize("NFD", text)
             if unicodedata.category(c) != "Mn"
         )
     return text
 
 
-def count_term(text: str, term: str, exact: bool = False, strip_accents: bool = True) -> int:
+def count_term(
+    text: str, term: str, exact: bool = False, strip_accents: bool = True
+) -> int:
     """Count occurrences of term in text with word boundaries."""
     if not text or not term:
         return 0

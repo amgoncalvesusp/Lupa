@@ -20,10 +20,19 @@ def test_default_set_includes_all_analyzers():
         "readability",
         "lexical_diversity",
         "keywords",
+        "ngrams",
         "sentiment",
         "term_search",
         "kwic",
     ]
+
+
+def test_categories_added_when_present():
+    cats = [("MITIGAÇÃO", [("carbono", False)])]
+    names = [a.name for a in build_default_analyzers([], categories=cats)]
+    assert "categories" in names
+    # And absent when no categories are defined.
+    assert "categories" not in [a.name for a in build_default_analyzers([])]
 
 
 def test_sentiment_can_be_disabled():

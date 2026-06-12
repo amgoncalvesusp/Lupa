@@ -82,6 +82,14 @@ class ResultDetailDialog(QDialog):
         if keywords:
             tabs.addTab(self._build_keywords_tab(keywords), "Palavras-chave")
 
+        ngrams = result.get("ngram_freq", [])
+        if ngrams:
+            tabs.addTab(self._build_ngrams_tab(ngrams), "N-gramas")
+
+        categories = result.get("category_results", {})
+        if categories:
+            tabs.addTab(self._build_categories_tab(categories), "Categorias")
+
         kwic = result.get("kwic", [])
         if kwic:
             tabs.addTab(self._build_kwic_tab(kwic), "Concordância (KWIC)")
@@ -189,6 +197,50 @@ class ResultDetailDialog(QDialog):
             table.setItem(i, 1, self._cell(str(count), center=True))
         table.setColumnWidth(0, 320)
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        return table
+
+    def _build_ngrams_tab(self, ngrams: List) -> QWidget:
+        table = self._make_table(["Expressão", "N", "Frequência"])
+        table.setRowCount(len(ngrams))
+        for i, (phrase, n, count) in enumerate(ngrams):
+            table.setItem(i, 0, self._cell(phrase))
+            table.setItem(i, 1, self._cell(str(n), center=True))
+            table.setItem(i, 2, self._cell(str(count), center=True))
+        table.setColumnWidth(0, 380)
+        table.setColumnWidth(1, 60)
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        return table
+
+    def _build_categories_tab(self, categories: Dict) -> QWidget:
+        rows = []
+        for name, data in categories.items():
+            rows.append(
+                (name, "(total da categoria)", data["total"], data["analytical"], True)
+            )
+            for label, counts in data.get("members", {}).items():
+                rows.append((name, label, counts["total"], counts["analytical"], False))
+        table = self._make_table(
+            ["Categoria", "Termo", "PDF Completo", "Corpus Analítico"]
+        )
+        table.setRowCount(len(rows))
+        for i, (name, label, total, analytical, is_total) in enumerate(rows):
+            cells = [
+                self._cell(name),
+                self._cell(label),
+                self._cell(str(total), center=True),
+                self._cell(str(analytical), center=True),
+            ]
+            for j, cell in enumerate(cells):
+                if is_total:
+                    cell.setForeground(QColor("#115e59"))
+                    font = cell.font()
+                    font.setBold(True)
+                    cell.setFont(font)
+                table.setItem(i, j, cell)
+        table.setColumnWidth(0, 220)
+        table.setColumnWidth(1, 260)
+        table.setColumnWidth(2, 130)
+        table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         return table
 
     def _build_kwic_tab(self, kwic: List[Dict]) -> QWidget:
