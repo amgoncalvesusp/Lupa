@@ -131,13 +131,116 @@ resiliência
     <li><b style="color:#b4413c;">Baixo</b> — Menos de 80% das páginas com texto extraído.</li>
 </ul>
 
+<h2>Metodologias das análises</h2>
+
+<p>Cada análise do Lupa segue um método publicado e auditável. Esta seção explica
+o que cada uma mede, como funciona internamente e qual referência citar.</p>
+
+<h3>Análise de sentimento (LeIA / VADER-PT) — como funciona tecnicamente</h3>
+
+<p>O Lupa usa o modelo <b>VADER</b> (<i>Valence Aware Dictionary and sEntiment
+Reasoner</i>; Hutto &amp; Gilbert, 2014) na adaptação <b>LeIA</b> para o
+português do Brasil (Almeida). É um método <b>léxico + regras</b>, não uma rede
+neural — cada escore pode ser rastreado até palavras e regras específicas.</p>
+
+<p><b>Passo a passo do cálculo:</b></p>
+<ul>
+    <li><b>1. Segmentação:</b> o texto do corpus analítico é dividido em
+    sentenças (com proteção a abreviações como "Sr.", "art.", e enumerações),
+    pois a sentença é a unidade de registro da análise.</li>
+    <li><b>2. Léxico de valência:</b> cada palavra da sentença é procurada em um
+    dicionário PT-BR em que cada entrada tem uma valência de <b>−4</b> (muito
+    negativa) a <b>+4</b> (muito positiva), atribuída e validada por avaliadores
+    humanos no projeto VADER original.</li>
+    <li><b>3. Regras contextuais:</b> a valência de cada palavra é ajustada por
+    heurísticas gramaticais: <b>negação</b> em janela de até 3 palavras
+    ("não foi bom" inverte parcialmente o escore, fator −0,74),
+    <b>intensificadores</b> ("muito", "extremamente": ±0,293),
+    <b>CAIXA ALTA</b> enfática (+0,733) e pontuação exclamativa.</li>
+    <li><b>4. Escore composto:</b> as valências ajustadas são somadas (x) e
+    normalizadas para o intervalo [−1, +1] pela função
+    <code>composto = x / √(x² + 15)</code>.</li>
+    <li><b>5. Classificação:</b> composto ≥ <b>+0,05</b> → Positivo;
+    composto ≤ <b>−0,05</b> → Negativo; entre os dois → Neutro
+    (limiares padrão de Hutto &amp; Gilbert, 2014).</li>
+    <li><b>6. Agregação:</b> o sentimento do documento é a média dos compostos
+    das sentenças, com os percentuais de sentenças positivas/negativas/neutras.</li>
+</ul>
+
+<div class="tip"><b>Segurança metodológica:</b> diferentemente de modelos
+"caixa-preta", todo escore é auditável — a aba <i>Sentimento (Sentenças)</i> do
+XLSX e a tela de detalhes (duplo clique na linha de resultado) mostram cada
+sentença com seu escore, permitindo conferência manual e uso das sentenças como
+pré-indicadores afetivos para núcleos de significação (Aguiar &amp; Ozella).</div>
+
+<div class="warn"><b>Limitações conhecidas:</b> métodos léxicos não capturam
+ironia/sarcasmo nem vocabulário ausente do dicionário (o léxico VADER tem origem
+em mídias sociais; em textos formais a cobertura tende a ser menor, aproximando
+escores do neutro). Recomenda-se usar a classificação como <b>triagem</b> e
+validar pela leitura das sentenças — não como veredito automático.</div>
+
+<p><b>Citar:</b> Hutto, C.J. &amp; Gilbert, E.E. (2014). <i>VADER: A Parsimonious
+Rule-based Model for Sentiment Analysis of Social Media Text</i>. ICWSM-14;
+LeIA — Almeida, R.J.A., github.com/rafjaa/LeIA.</p>
+
+<h3>Legibilidade (Flesch adaptado ao português)</h3>
+<p><b>O que mede:</b> facilidade de leitura do texto.
+<b>Como:</b> <code>ILF = 248,835 − 1,015×(palavras/frases) − 84,6×(sílabas/palavras)</code>.
+Classes: Muito fácil (≥75), Fácil (50–75), Difícil (25–50), Muito difícil (&lt;25).
+A contagem de sílabas usa heurística de grupos vocálicos (aproximação documentada).
+<b>Citar:</b> Martins et al. (1996), Notas do ICMC-USP, n. 28.</p>
+
+<h3>Diversidade lexical (TTR e Guiraud)</h3>
+<p><b>O que mede:</b> riqueza de vocabulário.
+<b>Como:</b> TTR = tipos ÷ tokens (Templin, 1957); como o TTR cai com o tamanho
+do texto, reporta-se também o Índice de Guiraud = tipos ÷ √tokens (Guiraud, 1954),
+mais estável para comparar documentos de tamanhos diferentes.</p>
+
+<h3>Frequência de palavras-chave</h3>
+<p><b>O que mede:</b> as palavras de conteúdo mais recorrentes — base quantitativa
+da análise de conteúdo (Bardin, 2011). <b>Como:</b> remoção de <i>stopwords</i>
+(lista editável em <code>data/stopwords_pt.txt</code>), contagem sem distinção de
+acentos, ranking por frequência. Top 10 na tabela; top 30 na aba e na tela de detalhes.</p>
+
+<h3>Concordância (KWIC)</h3>
+<p><b>O que mede:</b> nada — é a saída <b>qualitativa</b>: para cada ocorrência de
+cada termo de busca, registra o contexto à esquerda e à direita. Corresponde à
+<i>unidade de contexto</i> de Bardin: permite ler cada ocorrência em situação, e
+não apenas contá-la. <b>Como:</b> mesma correspondência da busca de termos
+(sem distinção de acentos; frases compostas suportadas), janela de 8 palavras.</p>
+
+<h3>Detecção do tipo de documento</h3>
+<p><b>Como:</b> classificador por regras com pontuação: padrões de conteúdo das
+primeiras páginas (2 pontos por acerto) e do nome do arquivo (1 ponto) para cada
+tipo configurado (mensagem ao Congresso, artigo científico, tese, dissertação,
+relatório, nota técnica/comunicação, legislação, plano, discurso, edital, ata,
+livro). Vence o tipo com maior pontuação; sem acertos, o documento é rotulado
+<i>Não identificado</i> — o Lupa não "chuta". A lista de tipos e padrões é
+editável em <code>data/document_types.json</code>.</p>
+
+<h3>Contagem de palavras e corpus analítico</h3>
+<p>Regras determinísticas descritas nas seções acima ("Regras de contagem" e
+"Corpus analítico"). <b>Citar (análise de conteúdo):</b> Bardin, L. (2011).
+<i>Análise de Conteúdo</i>. São Paulo: Edições 70.</p>
+
 <h2>Estrutura do XLSX exportado</h2>
 
 <h3>Aba 1: Contagem de Palavras</h3>
-<p>Linha por documento. Colunas: identificação, metadados detectados, contagens, grau de confiança, observações. Se termos de busca foram definidos, duas colunas por termo (PDF Completo / Corpus Analítico).</p>
+<p>Linha por documento. Colunas: identificação, metadados detectados, contagens,
+métricas textuais, sentimento, grau de confiança, observações. Se termos de busca
+foram definidos, duas colunas por termo (PDF Completo / Corpus Analítico).</p>
 
 <h3>Aba 2: Páginas Excluídas</h3>
 <p>Lista detalhada de cada página excluída do corpus analítico, com motivo da exclusão e número de palavras na página.</p>
+
+<h3>Aba 3: Sentimento (Sentenças)</h3>
+<p>Cada sentença analisada, com página, escore composto e classe — a trilha de auditoria da análise de sentimento.</p>
+
+<h3>Aba 4: Frequência de Palavras</h3>
+<p>Ranking das palavras de conteúdo mais frequentes por documento (até 30), após remoção de stopwords.</p>
+
+<h3>Aba 5: Concordância (KWIC)</h3>
+<p>Cada ocorrência dos termos de busca com contexto à esquerda e à direita, página e termo.</p>
 
 <h2>Atalhos</h2>
 <ul>

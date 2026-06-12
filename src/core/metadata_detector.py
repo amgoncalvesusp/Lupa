@@ -8,6 +8,7 @@ attempted.
 
 import json
 import sys
+import unicodedata
 from collections import Counter
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -17,25 +18,28 @@ import regex
 # Digit lookarounds (not \b) so years glued to underscores/letters in filenames
 # (e.g. "mensagem_2015.pdf") are still detected, while runs of digits are not.
 YEAR_PATTERN = regex.compile(r"(?<!\d)(199\d|20[0-3]\d)(?!\d)")
-MENSAGEM_PATTERN = regex.compile(r"mensagem\s+(?:ao\s+)?congresso", regex.IGNORECASE)
+
+UNIDENTIFIED_DOCUMENT = "Não identificado"
+CONTENT_HIT_SCORE = 2
+FILENAME_HIT_SCORE = 1
 
 # (canonical, start_year, end_year, variants)
 President = Tuple[str, int, int, List[str]]
+# (label, compiled content patterns, compiled filename patterns)
+DocType = Tuple[str, List["regex.Pattern"], List["regex.Pattern"]]
 
 
-def _data_path() -> Path:
-    """Resolve the presidents config path in both dev and frozen (PyInstaller)."""
+def _data_dir() -> Path:
+    """Resolve the config directory in both dev and frozen (PyInstaller)."""
     if getattr(sys, "frozen", False):
-        base = Path(sys._MEIPASS) / "src" / "core" / "data"
-    else:
-        base = Path(__file__).resolve().parent / "data"
-    return base / "presidents.json"
+        return Path(sys._MEIPASS) / "src" / "core" / "data"
+    return Path(__file__).resolve().parent / "data"
 
 
 def _load_presidents() -> List[President]:
     """Load heads of state from JSON. Returns an empty list if unavailable."""
     try:
-        with open(_data_path(), encoding="utf-8") as f:
+        with open(_data_dir() / "presidents.json", encoding="utf-8") as f:
             raw = json.load(f)
         return [
             (p["canonical"], int(p["start"]), int(p["end"]), list(p["variants"]))
@@ -46,7 +50,38 @@ def _load_presidents() -> List[President]:
         return []
 
 
+def _load_document_types() -> List[DocType]:
+    """Load document-type rules from JSON. Patterns are accent-free regexes
+    matched against accent-stripped lowercase text. Empty list if unavailable."""
+    try:
+        with open(_data_dir() / "document_types.json", encoding="utf-8") as f:
+            raw = json.load(f)
+        types: List[DocType] = []
+        for t in raw.get("types", []):
+            content = [
+                regex.compile(p, regex.IGNORECASE | regex.MULTILINE)
+                for p in t.get("content_patterns", [])
+            ]
+            fname = [
+                regex.compile(p, regex.IGNORECASE)
+                for p in t.get("filename_patterns", [])
+            ]
+            types.append((t["label"], content, fname))
+        return types
+    except (OSError, ValueError, KeyError, regex.error):
+        return []
+
+
 PRESIDENTS: List[President] = _load_presidents()
+DOCUMENT_TYPES: List[DocType] = _load_document_types()
+
+
+def _strip_accents(text: str) -> str:
+    return "".join(
+        c
+        for c in unicodedata.normalize("NFD", text.lower())
+        if unicodedata.category(c) != "Mn"
+    )
 
 
 def detect_metadata(
@@ -59,7 +94,7 @@ def detect_metadata(
     return {
         "year": year or "",
         "president": president or "",
-        "document": document or "Mensagem ao Congresso Nacional",
+        "document": document or UNIDENTIFIED_DOCUMENT,
     }
 
 
@@ -101,6 +136,26 @@ def _detect_president(text: str, year: Optional[str]) -> Optional[str]:
 
 
 def _detect_document_type(text: str, filename: str = "") -> Optional[str]:
-    if MENSAGEM_PATTERN.search(text) or "mensagem" in filename.lower():
-        return "Mensagem ao Congresso Nacional"
-    return None
+    """Score every configured type against the document head and filename.
+
+    Each content-pattern hit scores 2, each filename-pattern hit scores 1.
+    The highest-scoring type wins (ties resolved by list order in the JSON);
+    zero hits means the type stays unidentified rather than guessing.
+    """
+    norm_text = _strip_accents(text)
+    norm_fname = _strip_accents(filename)
+
+    best_label: Optional[str] = None
+    best_score = 0
+    for label, content_patterns, filename_patterns in DOCUMENT_TYPES:
+        score = 0
+        for pat in content_patterns:
+            if pat.search(norm_text):
+                score += CONTENT_HIT_SCORE
+        for pat in filename_patterns:
+            if pat.search(norm_fname):
+                score += FILENAME_HIT_SCORE
+        if score > best_score:
+            best_score = score
+            best_label = label
+    return best_label

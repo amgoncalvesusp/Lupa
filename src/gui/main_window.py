@@ -37,6 +37,7 @@ from PyQt6.QtWidgets import (
 from src.gui.styles import STYLE
 from src.gui.workers import ProcessingWorker
 from src.gui.help_dialog import HelpDialog
+from src.gui.detail_dialog import ResultDetailDialog
 from src.core.analysis import build_column_specs, build_default_analyzers
 from src.core.exporter import export_to_xlsx
 from src.core.ocr_engine import configure_tesseract
@@ -175,8 +176,10 @@ class MainWindow(QMainWindow):
 
         options_card = QFrame()
         options_card.setObjectName("Card")
-        file_row = QHBoxLayout(options_card)
-        file_row.setContentsMargins(14, 12, 14, 12)
+        card_layout = QVBoxLayout(options_card)
+        card_layout.setContentsMargins(14, 10, 14, 12)
+        card_layout.setSpacing(6)
+        file_row = QHBoxLayout()
         file_row.setSpacing(10)
         self.btn_add = QPushButton("➕  Adicionar Arquivos")
         self.btn_clear = QPushButton("🗑  Limpar Lista")
@@ -210,14 +213,38 @@ class MainWindow(QMainWindow):
             "ocorrência (aba 'Concordância (KWIC)' no XLSX). Requer termos de "
             "busca. Unidade de contexto para análise de conteúdo."
         )
+        # Row 1 — file management + extraction option
         file_row.addWidget(self.btn_add)
         file_row.addWidget(self.btn_clear)
         file_row.addStretch()
-        file_row.addWidget(self.president_checkbox)
-        file_row.addWidget(self.textmetrics_checkbox)
-        file_row.addWidget(self.kwic_checkbox)
-        file_row.addWidget(self.sentiment_checkbox)
         file_row.addWidget(self.ocr_checkbox)
+        card_layout.addLayout(file_row)
+
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setStyleSheet("color: #ece6da; background: #ece6da; max-height: 1px;")
+        card_layout.addWidget(separator)
+
+        # Row 2 — which analyses to run + methodology shortcut
+        analyses_row = QHBoxLayout()
+        analyses_row.setSpacing(14)
+        analyses_label = QLabel("ANÁLISES:")
+        analyses_label.setStyleSheet(
+            "color: #b5670a; font-size: 9pt; font-weight: 700; letter-spacing: 1px;"
+        )
+        analyses_row.addWidget(analyses_label)
+        analyses_row.addWidget(self.sentiment_checkbox)
+        analyses_row.addWidget(self.textmetrics_checkbox)
+        analyses_row.addWidget(self.kwic_checkbox)
+        analyses_row.addWidget(self.president_checkbox)
+        analyses_row.addStretch()
+        self.btn_methodology = QPushButton("📖  Metodologias")
+        self.btn_methodology.setToolTip(
+            "Explica cada análise: o que mede, como funciona e qual referência citar."
+        )
+        self.btn_methodology.clicked.connect(self.show_help)
+        analyses_row.addWidget(self.btn_methodology)
+        card_layout.addLayout(analyses_row)
         main_layout.addWidget(options_card)
 
         self.btn_add.clicked.connect(self.browse_files)
@@ -290,12 +317,29 @@ class MainWindow(QMainWindow):
         self.progress.setVisible(False)
         main_layout.addWidget(self.progress)
 
+        result_row = QHBoxLayout()
         result_header = QLabel("Resultados")
         result_header.setObjectName("SectionHeader")
-        main_layout.addWidget(result_header)
+        result_row.addWidget(result_header)
+        result_hint = QLabel("duplo clique em uma linha abre os detalhes")
+        result_hint.setStyleSheet("color: #8a8475; font-size: 9pt; padding-top: 6px;")
+        result_row.addWidget(result_hint)
+        result_row.addStretch()
+        self.btn_details = QPushButton("🔍  Ver detalhes")
+        self.btn_details.setEnabled(False)
+        self.btn_details.clicked.connect(self.open_selected_details)
+        result_row.addWidget(self.btn_details)
+        main_layout.addLayout(result_row)
+
         self.results_table = QTableWidget(0, 8)
         self._rebuild_results_table([])
         self.results_table.setAlternatingRowColors(True)
+        self.results_table.cellDoubleClicked.connect(self.open_result_details)
+        self.results_table.itemSelectionChanged.connect(
+            lambda: self.btn_details.setEnabled(
+                bool(self.results) and self.results_table.currentRow() >= 0
+            )
+        )
         main_layout.addWidget(self.results_table, stretch=2)
 
         self.status_bar = QStatusBar()
@@ -305,6 +349,14 @@ class MainWindow(QMainWindow):
     def show_help(self):
         dlg = HelpDialog(self)
         dlg.exec()
+
+    def open_result_details(self, row: int, _col: int = 0):
+        if 0 <= row < len(self.results):
+            dlg = ResultDetailDialog(self.results[row], self)
+            dlg.exec()
+
+    def open_selected_details(self):
+        self.open_result_details(self.results_table.currentRow())
 
     def show_about(self):
         QMessageBox.about(
@@ -413,11 +465,11 @@ class MainWindow(QMainWindow):
 
     def _rebuild_results_table(self, search_terms):
         self._president_on = getattr(self, "_enable_president", True)
-        base_headers = ["#", "Arquivo", "Ano"]
-        base_widths = [40, 280, 70]
+        base_headers = ["#", "Arquivo", "Ano", "Tipo"]
+        base_widths = [40, 260, 70, 170]
         if self._president_on:
             base_headers.append("Presidente")
-            base_widths.append(200)
+            base_widths.append(190)
         base_headers += ["Páginas", "Palavras (PDF)", "Palavras (Corpus)", "Confiança"]
         base_widths += [80, 130, 150, 90]
 
@@ -485,7 +537,7 @@ class MainWindow(QMainWindow):
         self.results_table.insertRow(row)
         words_total_str = f"{result['words_total']:,}".replace(",", ".")
         words_corpus_str = f"{result['words_analytical']:,}".replace(",", ".")
-        cells = [str(doc_id), result["filename"], result["year"]]
+        cells = [str(doc_id), result["filename"], result["year"], result["document"]]
         if getattr(self, "_president_on", True):
             cells.append(result["president"])
         cells += [

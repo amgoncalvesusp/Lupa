@@ -1,0 +1,119 @@
+{
+  "_comment": "Tipos de documento para classificação. Padrões são regex SEM acentos (o texto é normalizado antes da comparação) e minúsculos. 'content_patterns' são buscados nas primeiras páginas (cada acerto soma 2 pontos); 'filename_patterns' no nome do arquivo (cada acerto soma 1 ponto). Vence o tipo com maior pontuação; empate decide pela ordem da lista. Pontuação zero => 'Não identificado'. Edite livremente para adaptar a outros corpora.",
+  "types": [
+    {
+      "label": "Mensagem ao Congresso Nacional",
+      "content_patterns": [
+        "mensagem\\s+(?:ao\\s+)?congresso",
+        "abertura\\s+da\\s+sessao\\s+legislativa"
+      ],
+      "filename_patterns": ["mensagem"]
+    },
+    {
+      "label": "Artigo científico",
+      "content_patterns": [
+        "\\bdoi\\b\\s*[:.]?",
+        "\\bissn\\b",
+        "\\bresumo\\b[\\s\\S]{0,800}\\babstract\\b",
+        "\\babstract\\b[\\s\\S]{0,800}\\bresumo\\b",
+        "palavras[- ]chave\\s*[:.]",
+        "\\bkeywords\\b\\s*[:.]",
+        "revista\\s+(?:brasileira|de|cientifica)",
+        "artigo\\s+(?:original|de\\s+revisao|cientifico)"
+      ],
+      "filename_patterns": ["artigo", "paper", "article"]
+    },
+    {
+      "label": "Tese (doutorado)",
+      "content_patterns": [
+        "tese\\s+(?:de\\s+doutorado|apresentada|submetida)",
+        "obtencao\\s+do\\s+(?:titulo|grau)\\s+de\\s+doutor",
+        "programa\\s+de\\s+pos[- ]graduacao[\\s\\S]{0,400}doutorado"
+      ],
+      "filename_patterns": ["tese"]
+    },
+    {
+      "label": "Dissertação (mestrado)",
+      "content_patterns": [
+        "dissertacao\\s+(?:de\\s+mestrado|apresentada|submetida)",
+        "obtencao\\s+do\\s+(?:titulo|grau)\\s+de\\s+mestre",
+        "programa\\s+de\\s+pos[- ]graduacao[\\s\\S]{0,400}mestrado"
+      ],
+      "filename_patterns": ["dissertacao"]
+    },
+    {
+      "label": "Monografia / TCC",
+      "content_patterns": [
+        "trabalho\\s+de\\s+conclusao\\s+de\\s+curso",
+        "\\bmonografia\\b",
+        "\\btcc\\b"
+      ],
+      "filename_patterns": ["monografia", "tcc"]
+    },
+    {
+      "label": "Relatório",
+      "content_patterns": [
+        "relatorio\\s+(?:anual|final|tecnico|de\\s+gestao|de\\s+atividades|parcial)",
+        "^\\s*relatorio\\b"
+      ],
+      "filename_patterns": ["relatorio", "report"]
+    },
+    {
+      "label": "Comunicação / Nota técnica",
+      "content_patterns": [
+        "nota\\s+tecnica",
+        "nota\\s+(?:a|para)\\s+imprensa",
+        "\\bcomunicado\\b",
+        "comunicacao\\s+(?:oral|breve|tecnica|cientifica)"
+      ],
+      "filename_patterns": ["nota_tecnica", "comunicado", "comunicacao"]
+    },
+    {
+      "label": "Legislação (lei, decreto, portaria)",
+      "content_patterns": [
+        "lei\\s+(?:n[oº°.]|complementar|federal|estadual|municipal)",
+        "decreto\\s+(?:n[oº°.]|legislativo|federal)",
+        "portaria\\s+n[oº°.]",
+        "resolucao\\s+n[oº°.]",
+        "medida\\s+provisoria",
+        "o\\s+presidente\\s+da\\s+republica[\\s\\S]{0,200}decreta"
+      ],
+      "filename_patterns": ["lei", "decreto", "portaria", "resolucao"]
+    },
+    {
+      "label": "Plano / Programa governamental",
+      "content_patterns": [
+        "plano\\s+(?:nacional|estadual|municipal|diretor|plurianual)",
+        "programa\\s+(?:nacional|federal)\\s+de"
+      ],
+      "filename_patterns": ["plano", "programa"]
+    },
+    {
+      "label": "Discurso / Pronunciamento",
+      "content_patterns": [
+        "\\bdiscurso\\s+(?:do|da|de|proferido)",
+        "\\bpronunciamento\\b"
+      ],
+      "filename_patterns": ["discurso", "pronunciamento"]
+    },
+    {
+      "label": "Edital",
+      "content_patterns": ["\\bedital\\s+(?:n[oº°.]|de|publico)"],
+      "filename_patterns": ["edital"]
+    },
+    {
+      "label": "Ata",
+      "content_patterns": ["\\bata\\s+da\\s+(?:reuniao|sessao|assembleia)"],
+      "filename_patterns": ["ata_", "ata-"]
+    },
+    {
+      "label": "Livro / Capítulo",
+      "content_patterns": [
+        "\\bisbn\\b",
+        "dados\\s+internacionais\\s+de\\s+catalogacao",
+        "\\beditora\\b[\\s\\S]{0,100}\\bedicao\\b"
+      ],
+      "filename_patterns": ["livro", "capitulo"]
+    }
+  ]
+}

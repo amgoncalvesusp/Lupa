@@ -48,3 +48,40 @@ def test_president_disambiguated_by_year():
 def test_document_type_default():
     md = detect_metadata(["mensagem ao congresso nacional"], "msg.pdf")
     assert md["document"] == "Mensagem ao Congresso Nacional"
+
+
+def test_document_type_unidentified_when_no_signal():
+    md = detect_metadata(["texto qualquer sem pista nenhuma"], "doc.pdf")
+    assert md["document"] == "Não identificado"
+
+
+def test_document_type_artigo_cientifico():
+    pages = [
+        "Revista Brasileira de Ecologia ISSN 1234-5678. "
+        "Resumo: x. Abstract: y. Palavras-chave: clima."
+    ]
+    assert detect_metadata(pages, "estudo.pdf")["document"] == "Artigo científico"
+
+
+def test_document_type_comunicacao_nota_tecnica():
+    md = detect_metadata(["Nota Técnica n. 5 sobre saneamento"], "nota_tecnica_5.pdf")
+    assert md["document"] == "Comunicação / Nota técnica"
+
+
+def test_document_type_dissertacao():
+    pages = ["Dissertação de mestrado apresentada ao Programa de Pós-Graduação"]
+    assert detect_metadata(pages, "d.pdf")["document"] == "Dissertação (mestrado)"
+
+
+def test_document_type_legislacao():
+    pages = ["LEI Nº 14.026, DE 15 DE JULHO DE 2020. O PRESIDENTE DA REPÚBLICA"]
+    assert (
+        detect_metadata(pages, "lei.pdf")["document"]
+        == "Legislação (lei, decreto, portaria)"
+    )
+
+
+def test_document_type_accent_insensitive():
+    # OCR often drops accents; "relatorio" without accent must still match.
+    pages = ["relatorio anual de gestao do orgao"]
+    assert detect_metadata(pages, "x.pdf")["document"] == "Relatório"
