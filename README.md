@@ -367,10 +367,8 @@ Cobertura atual do código próprio (excluindo a biblioteca vendorizada LeIA): *
 
 Trabalho desenvolvido no âmbito do Programa de Pós-graduação em Desenvolvimento Territorial e Meio Ambiente da Universidade de Araraquara (UNIARA):
 
-- Natalia Vieira de Carvalho
-- Alessandra Nascimento dos Santos
-- Helena Carvalho de Lorenzo
 - Adriano Marques Gonçalves
+- Thaís Angeli
 
 ---
 
@@ -384,6 +382,6 @@ MIT — consulte o arquivo [LICENSE](LICENSE) para detalhes.
 
 Caso utilize este software em sua pesquisa, sugere-se a seguinte citação:
 
-> CARVALHO, N. V. de; SANTOS, A. N. dos; LORENZO, H. C. de; GONÇALVES, A. M. *Lupa: ferramenta para análise de conteúdo e métricas textuais de corpora documentais em PDF*. Araraquara: UNIARA, 2026.
+> GONÇALVES, A. M.; ANGELI, T. *Lupa: ferramenta para análise de conteúdo e métricas textuais de corpora documentais em PDF*. Araraquara: UNIARA, 2026.
 
-> Lupa deriva do *Contador de Palavras* (mesma autoria). Um DOI próprio será atribuído em publicação futura.
+> Lupa deriva do *Contador de Palavras*. Um DOI próprio será atribuído em publicação futura.

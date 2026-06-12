@@ -18,7 +18,7 @@ from .base import ColumnSpec, DocumentContext
 from ..term_search import normalize
 from ..word_counter import WORD_PATTERN
 
-CONTEXT_WINDOW = 8  # words of context on each side
+CONTEXT_WINDOW = 15  # words of context on each side
 MAX_LINES_PER_DOC = 1000  # safety cap to keep the sheet bounded
 
 

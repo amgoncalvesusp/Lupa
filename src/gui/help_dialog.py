@@ -207,7 +207,8 @@ acentos, ranking por frequência. Top 10 na tabela; top 30 na aba e na tela de d
 cada termo de busca, registra o contexto à esquerda e à direita. Corresponde à
 <i>unidade de contexto</i> de Bardin: permite ler cada ocorrência em situação, e
 não apenas contá-la. <b>Como:</b> mesma correspondência da busca de termos
-(sem distinção de acentos; frases compostas suportadas), janela de 8 palavras.</p>
+(sem distinção de acentos; frases compostas suportadas), janela de 15 palavras
+de cada lado.</p>
 
 <h3>Detecção do tipo de documento</h3>
 <p><b>Como:</b> classificador por regras com pontuação: padrões de conteúdo das

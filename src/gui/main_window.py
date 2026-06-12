@@ -370,10 +370,8 @@ class MainWindow(QMainWindow):
             "<hr>"
             "<p><b>Autoria</b></p>"
             "<ul style='margin-left:8px;'>"
-            "<li>Natalia Vieira de Carvalho</li>"
-            "<li>Alessandra Nascimento dos Santos</li>"
-            "<li>Helena Carvalho de Lorenzo</li>"
             "<li>Adriano Marques Gonçalves</li>"
+            "<li>Thaís Angeli</li>"
             "</ul>"
             "<p><i>Programa de Pós-graduação em Desenvolvimento Territorial "
             "e Meio Ambiente — UNIARA</i></p>",
