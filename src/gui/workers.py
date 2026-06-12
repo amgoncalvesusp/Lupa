@@ -19,6 +19,7 @@ class ProcessingWorker(QObject):
         enable_ocr: bool = True,
         search_terms: List[Tuple[str, bool]] = None,
         enable_sentiment: bool = True,
+        enable_emotions: bool = True,
         enable_president: bool = True,
         enable_textmetrics: bool = True,
         enable_kwic: bool = True,
@@ -29,6 +30,7 @@ class ProcessingWorker(QObject):
         self.enable_ocr = enable_ocr
         self.search_terms = search_terms or []
         self.enable_sentiment = enable_sentiment
+        self.enable_emotions = enable_emotions
         self.enable_president = enable_president
         self.enable_textmetrics = enable_textmetrics
         self.enable_kwic = enable_kwic
@@ -44,6 +46,7 @@ class ProcessingWorker(QObject):
             enable_ocr=self.enable_ocr,
             search_terms=self.search_terms,
             detect_sentiment=self.enable_sentiment,
+            detect_emotions=self.enable_emotions,
             detect_president=self.enable_president,
             detect_textmetrics=self.enable_textmetrics,
             detect_kwic=self.enable_kwic,

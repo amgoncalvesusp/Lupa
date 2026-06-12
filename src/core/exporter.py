@@ -9,6 +9,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from .analysis import ColumnSpec, build_column_specs, build_default_analyzers
+from .corpus_summary import build_corpus_summary, has_multiple_years
 
 HEADER_FILL = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
 TERM_HEADER_FILL = PatternFill(
@@ -73,6 +74,10 @@ def export_to_xlsx(
     _write_category_sheet(wb, results)
     _write_tfidf_sheet(wb, results)
     _write_kwic_sheet(wb, results)
+    _write_emotion_sheet(wb, results)
+    _write_geography_sheet(wb, results)
+    _write_cooccurrence_sheet(wb, results)
+    _write_corpus_summary_sheet(wb, results)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     wb.save(output_path)
@@ -396,3 +401,116 @@ def _write_tfidf_sheet(wb: Workbook, results: List[Dict]) -> None:
             ws.cell(row=row, column=5, value=score)
             _style_detail_row(ws, row, 5)
             row += 1
+
+
+def _write_geography_sheet(wb: Workbook, results: List[Dict]) -> None:
+    if not any(r.get("geo_mentions") for r in results):
+        return
+    ws = _detail_sheet(
+        wb,
+        "Menções Territoriais",
+        ["Nº Doc.", "Arquivo", "Local", "Tipo", "UF", "Contagem"],
+        [8, 32, 30, 16, 8, 12],
+    )
+    row = 2
+    for doc_idx, result in enumerate(results, start=1):
+        for name, place_type, uf, count in result.get("geo_mentions", []):
+            ws.cell(row=row, column=1, value=doc_idx)
+            ws.cell(row=row, column=2, value=result["filename"])
+            ws.cell(row=row, column=3, value=name)
+            ws.cell(row=row, column=4, value=place_type)
+            ws.cell(row=row, column=5, value=uf)
+            ws.cell(row=row, column=6, value=count)
+            _style_detail_row(ws, row, 6)
+            row += 1
+
+
+def _write_emotion_sheet(wb: Workbook, results: List[Dict]) -> None:
+    if not any(r.get("emotion_words") for r in results):
+        return
+    ws = _detail_sheet(
+        wb,
+        "Emoções (Palavras)",
+        ["Nº Doc.", "Arquivo", "Emoção", "Palavra", "Contagem"],
+        [8, 32, 20, 28, 12],
+    )
+    row = 2
+    for doc_idx, result in enumerate(results, start=1):
+        for emotion, words in result.get("emotion_words", {}).items():
+            for word, count in words:
+                ws.cell(row=row, column=1, value=doc_idx)
+                ws.cell(row=row, column=2, value=result["filename"])
+                ws.cell(row=row, column=3, value=emotion)
+                ws.cell(row=row, column=4, value=word)
+                ws.cell(row=row, column=5, value=count)
+                _style_detail_row(ws, row, 5)
+                row += 1
+
+
+def _write_cooccurrence_sheet(wb: Workbook, results: List[Dict]) -> None:
+    if not any(r.get("cooccurrence") for r in results):
+        return
+    ws = _detail_sheet(
+        wb,
+        "Co-ocorrência",
+        ["Nº Doc.", "Arquivo", "Termo A", "Termo B", "Sentenças"],
+        [8, 32, 28, 28, 12],
+    )
+    row = 2
+    for doc_idx, result in enumerate(results, start=1):
+        for term_a, term_b, count in result.get("cooccurrence", []):
+            ws.cell(row=row, column=1, value=doc_idx)
+            ws.cell(row=row, column=2, value=result["filename"])
+            ws.cell(row=row, column=3, value=term_a)
+            ws.cell(row=row, column=4, value=term_b)
+            ws.cell(row=row, column=5, value=count)
+            _style_detail_row(ws, row, 5)
+            row += 1
+
+
+def _write_corpus_summary_sheet(wb: Workbook, results: List[Dict]) -> None:
+    if not has_multiple_years(results):
+        return
+    summary = build_corpus_summary(results)
+    term_labels = []
+    category_names = []
+    for row in summary.values():
+        for label in row["terms"]:
+            if label not in term_labels:
+                term_labels.append(label)
+        for name in row["categories"]:
+            if name not in category_names:
+                category_names.append(name)
+
+    headers = [
+        "Ano",
+        "Nº Docs",
+        "Palavras (Corpus)",
+        "Sentimento médio",
+        "Legibilidade média",
+        "% positivas",
+        "% negativas",
+    ]
+    headers += [f"Termo: {label}" for label in term_labels]
+    headers += [f"Categoria: {name}" for name in category_names]
+    widths = [10, 10, 18, 16, 18, 12, 12] + [18] * (
+        len(term_labels) + len(category_names)
+    )
+    ws = _detail_sheet(wb, "Síntese por Ano", headers, widths)
+    row_idx = 2
+    for year, data in summary.items():
+        values = [
+            year,
+            data["docs"],
+            data["words_analytical"],
+            data["sent_compound_medio"],
+            data["leg_indice_medio"],
+            data["sent_pct_positivo"],
+            data["sent_pct_negativo"],
+        ]
+        values += [data["terms"].get(label, 0) for label in term_labels]
+        values += [data["categories"].get(name, 0) for name in category_names]
+        for col_idx, value in enumerate(values, start=1):
+            ws.cell(row=row_idx, column=col_idx, value=value)
+        _style_detail_row(ws, row_idx, len(values))
+        row_idx += 1

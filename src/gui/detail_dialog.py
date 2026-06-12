@@ -86,13 +86,25 @@ class ResultDetailDialog(QDialog):
         if ngrams:
             tabs.addTab(self._build_ngrams_tab(ngrams), "N-gramas")
 
+        emotions = result.get("emotion_words", {})
+        if any(emotions.values()):
+            tabs.addTab(self._build_emotions_tab(emotions), "Emoções")
+
         categories = result.get("category_results", {})
         if categories:
             tabs.addTab(self._build_categories_tab(categories), "Categorias")
 
+        geography = result.get("geo_mentions", [])
+        if geography:
+            tabs.addTab(self._build_geography_tab(geography), "Território")
+
         kwic = result.get("kwic", [])
         if kwic:
             tabs.addTab(self._build_kwic_tab(kwic), "Concordância (KWIC)")
+
+        cooccurrence = result.get("cooccurrence", [])
+        if cooccurrence:
+            tabs.addTab(self._build_cooccurrence_tab(cooccurrence), "Co-ocorrência")
 
         excluded = result.get("excluded_pages", [])
         if excluded:
@@ -211,6 +223,23 @@ class ResultDetailDialog(QDialog):
         table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         return table
 
+    def _build_emotions_tab(self, emotions: Dict) -> QWidget:
+        rows = [
+            (emotion, word, count)
+            for emotion, words in emotions.items()
+            for word, count in words
+        ]
+        table = self._make_table(["Emoção", "Palavra", "Contagem"])
+        table.setRowCount(len(rows))
+        for i, (emotion, word, count) in enumerate(rows):
+            table.setItem(i, 0, self._cell(emotion))
+            table.setItem(i, 1, self._cell(word))
+            table.setItem(i, 2, self._cell(str(count), center=True))
+        table.setColumnWidth(0, 180)
+        table.setColumnWidth(2, 100)
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        return table
+
     def _build_categories_tab(self, categories: Dict) -> QWidget:
         rows = []
         for name, data in categories.items():
@@ -243,6 +272,20 @@ class ResultDetailDialog(QDialog):
         table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         return table
 
+    def _build_geography_tab(self, mentions: List) -> QWidget:
+        table = self._make_table(["Local", "Tipo", "UF", "Contagem"])
+        table.setRowCount(len(mentions))
+        for i, (name, place_type, uf, count) in enumerate(mentions):
+            table.setItem(i, 0, self._cell(name))
+            table.setItem(i, 1, self._cell(place_type, center=True))
+            table.setItem(i, 2, self._cell(uf, center=True))
+            table.setItem(i, 3, self._cell(str(count), center=True))
+        table.setColumnWidth(1, 140)
+        table.setColumnWidth(2, 70)
+        table.setColumnWidth(3, 100)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        return table
+
     def _build_kwic_tab(self, kwic: List[Dict]) -> QWidget:
         table = self._make_table(
             [
@@ -272,6 +315,18 @@ class ResultDetailDialog(QDialog):
         header = table.horizontalHeader()
         header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        return table
+
+    def _build_cooccurrence_tab(self, rows: List) -> QWidget:
+        table = self._make_table(["Termo A", "Termo B", "Sentenças"])
+        table.setRowCount(len(rows))
+        for i, (term_a, term_b, count) in enumerate(rows):
+            table.setItem(i, 0, self._cell(term_a))
+            table.setItem(i, 1, self._cell(term_b))
+            table.setItem(i, 2, self._cell(str(count), center=True))
+        table.setColumnWidth(2, 110)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         return table
 
     def _build_excluded_tab(self, excluded: List[Dict]) -> QWidget:

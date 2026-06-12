@@ -21,9 +21,12 @@ def test_default_set_includes_all_analyzers():
         "lexical_diversity",
         "keywords",
         "ngrams",
+        "geography",
         "sentiment",
+        "emotions",
         "term_search",
         "kwic",
+        "cooccurrence",
     ]
 
 
@@ -40,15 +43,21 @@ def test_sentiment_can_be_disabled():
     assert "sentiment" not in names
 
 
+def test_emotions_can_be_disabled():
+    names = [a.name for a in build_default_analyzers([], detect_emotions=False)]
+    assert "emotions" not in names
+
+
 def test_textmetrics_can_be_disabled():
     names = [a.name for a in build_default_analyzers([], detect_textmetrics=False)]
-    for n in ("readability", "lexical_diversity", "keywords"):
+    for n in ("readability", "lexical_diversity", "keywords", "geography"):
         assert n not in names
 
 
 def test_kwic_can_be_disabled():
     names = [a.name for a in build_default_analyzers([], detect_kwic=False)]
     assert "kwic" not in names
+    assert "cooccurrence" not in names
 
 
 def test_column_specs_prefix_and_suffix():

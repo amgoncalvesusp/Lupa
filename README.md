@@ -1,6 +1,6 @@
 # Lupa
 
-**Lupa** é um software desktop standalone para **análise de conteúdo e métricas textuais** de arquivos PDF, de forma padronizada, auditável e replicável. Voltado à pesquisa acadêmica que exige rigor metodológico na análise de corpus documentais — com ênfase em análise de conteúdo (Bardin) e núcleos de significação (Aguiar & Ozella).
+**Lupa** é um software desktop standalone para **análise de conteúdo e métricas textuais** de arquivos PDF, DOCX e TXT, de forma padronizada, auditável e replicável. Voltado à pesquisa acadêmica que exige rigor metodológico na análise de corpus documentais — com ênfase em análise de conteúdo (Bardin) e núcleos de significação (Aguiar & Ozella).
 
 > Lupa originou-se do *Contador de Palavras* e o expande para uma plataforma de análise documental: além da contagem, oferece análise de sentimento, legibilidade, diversidade lexical, palavras-chave e concordância (KWIC).
 
@@ -13,21 +13,24 @@
 
 ## Visão geral
 
-O Lupa realiza, em lote, a extração e a análise de PDFs seguindo regras explícitas e auditáveis. Para cada documento, retorna:
+O Lupa realiza, em lote, a extração e a análise de documentos seguindo regras explícitas e auditáveis. Para cada documento, retorna:
 
 - **Contagem de palavras**: total (todo o texto) e do **corpus analítico** (conteúdo substantivo, com exclusão automática de elementos pré-textuais)
 - **Busca de termos e expressões** definidos pelo pesquisador (total e no corpus)
 - **Análise de sentimento** (LeIA / VADER-PT) por sentença
+- **Emoções discretas** (NRC EmoLex, quando o léxico editável está preenchido)
 - **Métricas textuais**: legibilidade (Flesch-PT), diversidade lexical (TTR / Guiraud), frequência de palavras-chave
 - **Concordância (KWIC)**: contexto ao redor de cada ocorrência dos termos
+- **Co-ocorrência**: pares de termos que aparecem na mesma sentença
+- **Menções territoriais**: estados, regiões e biomas brasileiros via gazetteer editável
 - **Metadados**: ano, tipo de documento e presidente (opcional/configurável)
 - **Indicadores de confiabilidade**: páginas com texto, páginas problemáticas, uso de OCR, grau de confiança
 
-Resultados em interface gráfica moderna e exportáveis em planilha XLSX formatada, com abas de resumo e de detalhamento (páginas excluídas, sentenças, frequência de palavras, concordância KWIC).
+Resultados em interface gráfica moderna e exportáveis em XLSX formatado, CSV e JSON, com saídas de resumo e detalhamento (páginas excluídas, sentenças, frequência de palavras, concordância KWIC).
 
 ## Principais funcionalidades
 
-- Interface gráfica em PyQt6 com drag-and-drop para múltiplos PDFs e pastas
+- Interface gráfica em PyQt6 com drag-and-drop para múltiplos PDFs, DOCX, TXT e pastas
 - Processamento assíncrono (não trava a interface) com barra de progresso por arquivo e geral
 - OCR automático via Tesseract para PDFs escaneados (idioma português)
 - Detecção heurística de páginas pré-textuais (ficha catalográfica, sumário, expediente, lista de ministros etc.)
@@ -35,9 +38,13 @@ Resultados em interface gráfica moderna e exportáveis em planilha XLSX formata
 - Detecção de presidente **opcional** e configurável via `data/presidents.json` (adaptável a outros países/períodos)
 - Busca de palavras e expressões com suporte a busca exata entre aspas
 - Análise de sentimento em português (LeIA / VADER-PT) por sentença, com detalhamento exportável para análise de conteúdo e núcleos de significação
+- Emoções discretas por léxico NRC editável (`data/nrc_emolex_pt.txt`), com trilha de palavras associadas
 - Métricas textuais: legibilidade (Flesch-PT), diversidade lexical (TTR / Guiraud) e frequência de palavras-chave (com aba detalhada no XLSX)
 - Concordância KWIC: contexto ao redor de cada ocorrência dos termos de busca (aba "Concordância (KWIC)"), a unidade de contexto da análise de conteúdo
-- Exportação em XLSX formatado com cabeçalho estilizado, congelamento de painéis e linhas alternadas
+- Co-ocorrência de termos por sentença e síntese temporal por ano do corpus
+- Menções territoriais brasileiras via `data/gazetteer_br.json`
+- Salvar e abrir projetos `.lupa.json` com arquivos, termos, categorias e flags
+- Exportação em XLSX formatado, CSV interoperável (`;`, `utf-8-sig`) e JSON para arquivamento/reuso em R ou Python
 - Documentação integrada (atalho F1) explicando todas as regras e fluxos
 - Aplicação totalmente offline; nenhum dado é enviado a serviços externos
 
@@ -88,11 +95,11 @@ O software detecta o Tesseract na inicialização e habilita/desabilita a opçã
 
 ### Fluxo básico
 
-1. **Adicionar PDFs**: arraste arquivos para a área pontilhada ou clique em *Adicionar Arquivos*. Pastas também são aceitas (todos os PDFs da pasta são incluídos).
+1. **Adicionar documentos**: arraste arquivos para a área pontilhada ou clique em *Adicionar Arquivos*. Pastas também são aceitas (PDF, DOCX e TXT são incluídos).
 2. **(Opcional) Definir termos de busca**: digite, no painel direito, um termo por linha. Use aspas para busca exata.
 3. **(Opcional) Marcar OCR**: ative se houver PDFs escaneados (apenas imagem).
-4. **Processar**: clique em *▶ Processar PDFs*.
-5. **Exportar**: ao final, clique em *⬇ Exportar XLSX* para salvar os resultados.
+4. **Processar**: clique em *▶ Processar documentos*.
+5. **Exportar**: ao final, clique em *⬇ Exportar* e escolha XLSX, CSV ou JSON.
 
 ### Sintaxe da busca de termos
 
@@ -121,6 +128,14 @@ resiliência
 ```
 
 A busca é insensível a acentos e maiúsculas/minúsculas. Cada termo retorna duas contagens: uma considerando o PDF completo e outra considerando apenas o corpus analítico.
+
+### Formatos aceitos
+
+- **PDF**: extração por PyMuPDF; se o documento for escaneado, o OCR Tesseract pode ser aplicado.
+- **DOCX**: extração de parágrafos via `python-docx`; como o formato não expõe páginas impressas, o Lupa cria blocos aproximados de até 3000 caracteres.
+- **TXT**: blocos separados por quebras duplas de linha; blocos muito grandes são divididos em partes de até 3000 caracteres.
+
+Em DOCX/TXT, o número de "página" nos detalhes representa bloco textual, não página impressa.
 
 ### Regras de contagem de palavras
 
@@ -167,6 +182,13 @@ contexto, a *unidade de contexto* da análise de conteúdo de Bardin.
 
 Referência: Bardin, L. (2011). *Análise de Conteúdo*. São Paulo: Edições 70.
 
+### Co-ocorrência de termos
+
+Quando há pelo menos dois termos de busca, o Lupa conta pares que aparecem na
+mesma sentença do corpus analítico. A aba **"Co-ocorrência"** mostra termo A,
+termo B e número de sentenças. É uma medida descritiva de associação textual,
+não evidência de causalidade.
+
 ### Métricas textuais
 
 Conjunto de medidas (caixa "Métricas textuais", ligada por padrão) calculadas
@@ -192,6 +214,33 @@ sobre o corpus analítico e exportadas no XLSX. Voltadas à análise de conteúd
 - Templin, M. (1957). *Certain language skills in children*. University of
   Minnesota Press.
 - Bardin, L. (2011). *Análise de Conteúdo*. São Paulo: Edições 70.
+
+### Emoções discretas (NRC)
+
+A análise **Emoções (NRC)** usa um arquivo editável em
+`src/core/data/nrc_emolex_pt.txt`, no formato `palavra<TAB>emocao`, para contar
+oito emoções: alegria, tristeza, raiva, medo, confiança, repulsa, surpresa e
+antecipação. O arquivo é distribuído vazio por padrão para respeitar os termos
+do NRC Word-Emotion Association Lexicon; quando preenchido pelo pesquisador, o
+XLSX inclui a aba **"Emoções (Palavras)"** com a trilha de auditoria.
+
+Referência: Mohammad, S. M. & Turney, P. D. (2013). *Crowdsourcing a
+Word-Emotion Association Lexicon*. Computational Intelligence, 29(3).
+
+### Menções territoriais
+
+O Lupa conta menções a estados, regiões e biomas brasileiros usando o gazetteer
+editável `src/core/data/gazetteer_br.json`. Variantes longas têm prioridade
+sobre variantes curtas para evitar dupla contagem no mesmo trecho. A saída
+aparece na coluna "Menções territoriais" e na aba **"Menções Territoriais"**.
+
+### Síntese temporal do corpus
+
+Quando o lote possui dois ou mais anos distintos, o XLSX inclui a aba
+**"Síntese por Ano"**: número de documentos, palavras do corpus, médias
+descritivas de sentimento/legibilidade e contagens por termo/categoria. A
+janela principal também oferece o botão **Síntese do corpus** após o
+processamento.
 
 ### Detecção de presidente (opcional)
 
@@ -266,12 +315,29 @@ A análise pode ser ligada/desligada por uma caixa de seleção na interface.
   instrumento para a apreensão da constituição dos sentidos* / *Apreensão dos
   sentidos: aprimorando a proposta dos núcleos de significação*.
 
+### Exportação dos resultados
+
+O Lupa exporta o mesmo lote processado em três formatos:
+
+- **XLSX**: planilha formatada para leitura, auditoria manual e compartilhamento.
+- **CSV**: cria uma pasta com `resultados.csv` e arquivos de detalhe quando houver dados (`sentencas.csv`, `palavras.csv`, `ngramas.csv`, `categorias.csv`, `kwic.csv`, `paginas_excluidas.csv`). Os arquivos usam separador `;` e `utf-8-sig` para compatibilidade com Excel em português.
+- **JSON**: arquivo único com `gerado_por` e `documentos`, preservando os resultados públicos completos de cada documento para arquivamento ou análise em R/Python.
+
+### Projetos `.lupa.json`
+
+O menu **Arquivo** permite salvar e abrir projetos de análise. O arquivo guarda
+os caminhos dos documentos, o texto bruto dos termos/categorias e as flags das
+análises. Ao abrir um projeto, arquivos ausentes são avisados sem impedir o
+carregamento dos demais.
+
 ### Atalhos de teclado
 
 | Atalho        | Ação                          |
 |---------------|-------------------------------|
-| `Ctrl+O`      | Adicionar PDFs                |
-| `Ctrl+E`      | Exportar XLSX                 |
+| `Ctrl+O`      | Adicionar documentos          |
+| `Ctrl+S`      | Salvar projeto                |
+| `Ctrl+Shift+O`| Abrir projeto                 |
+| `Ctrl+E`      | Exportar resultados           |
 | `Ctrl+Q`      | Sair                          |
 | `F1`          | Abrir documentação integrada  |
 

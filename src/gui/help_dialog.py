@@ -24,16 +24,24 @@ HELP_HTML = """
 
 <h1>Como usar o Lupa</h1>
 
-<p>Software para análise de conteúdo e métricas textuais de PDFs, de forma padronizada e auditável. Voltado à pesquisa acadêmica: contagem, busca de termos, análise de sentimento, legibilidade, diversidade lexical, palavras-chave e concordância (KWIC). Inclui suporte opcional a metadados de Mensagens Presidenciais ao Congresso Nacional.</p>
+<p>Software para análise de conteúdo e métricas textuais de documentos PDF, DOCX e TXT, de forma padronizada e auditável. Voltado à pesquisa acadêmica: contagem, busca de termos, análise de sentimento, emoções discretas, legibilidade, diversidade lexical, palavras-chave, território, co-ocorrência e concordância (KWIC). Inclui suporte opcional a metadados de Mensagens Presidenciais ao Congresso Nacional.</p>
 
 <h2>Fluxo básico de uso</h2>
 <ol>
-    <li><b>Adicionar PDFs</b> — Arraste arquivos para a área pontilhada ou clique em <code>Adicionar Arquivos</code>.</li>
+    <li><b>Adicionar documentos</b> — Arraste arquivos PDF, DOCX ou TXT para a área pontilhada ou clique em <code>Adicionar Arquivos</code>.</li>
     <li><b>(Opcional) Definir termos de busca</b> — Digite termos no campo de busca, um por linha.</li>
     <li><b>(Opcional) Marcar OCR</b> — Ative se algum PDF for escaneado (apenas imagem).</li>
-    <li><b>Processar</b> — Clique em <code>▶ Processar PDFs</code>. O progresso aparece na barra inferior.</li>
-    <li><b>Exportar</b> — Após conclusão, clique em <code>⬇ Exportar XLSX</code>.</li>
+    <li><b>Processar</b> — Clique em <code>▶ Processar documentos</code>. O progresso aparece na barra inferior.</li>
+    <li><b>Exportar</b> — Após conclusão, clique em <code>⬇ Exportar</code> e escolha XLSX, CSV ou JSON.</li>
 </ol>
+
+<h2>Formatos aceitos</h2>
+<ul>
+    <li><b>PDF:</b> extração por PyMuPDF; OCR opcional para páginas escaneadas.</li>
+    <li><b>DOCX:</b> parágrafos extraídos por <code>python-docx</code>, agrupados em blocos aproximados de até 3000 caracteres.</li>
+    <li><b>TXT:</b> blocos por quebra dupla de linha; blocos grandes são divididos.</li>
+</ul>
+<div class="warn">Em DOCX/TXT, o número de página exibido nos detalhes representa bloco textual, não página impressa.</div>
 
 <h2>Busca de termos e expressões</h2>
 
@@ -229,6 +237,32 @@ dos termos membros. Operacionaliza a etapa de codificação da análise de conte
 <b>Como:</b> usa o mesmo mecanismo da busca de termos (mesmos números); o
 detalhamento por termo membro fica na aba "Categorias".</p>
 
+<h3>Co-ocorrência de termos</h3>
+<p><b>O que mede:</b> pares de termos de busca que aparecem na mesma sentença.
+<b>Como:</b> cada sentença do corpus analítico é testada com o mesmo mecanismo da
+busca de termos; pares com ao menos uma ocorrência aparecem na aba
+"Co-ocorrência". Co-ocorrência é descritiva e não implica causalidade.</p>
+
+<h3>Emoções discretas (NRC EmoLex)</h3>
+<p><b>O que mede:</b> associações lexicais com alegria, tristeza, raiva, medo,
+confiança, repulsa, surpresa e antecipação. <b>Como:</b> usa o arquivo editável
+<code>data/nrc_emolex_pt.txt</code> no formato <code>palavra TAB emocao</code>.
+O arquivo é distribuído vazio por padrão por causa dos termos do NRC; quando
+preenchido pelo pesquisador, a aba "Emoções (Palavras)" mostra a trilha de
+auditoria. <b>Citar:</b> Mohammad &amp; Turney (2013).</p>
+
+<h3>Menções territoriais</h3>
+<p><b>O que mede:</b> estados, regiões e biomas brasileiros mencionados no corpus
+analítico. <b>Como:</b> casamento por sequência de tokens contra o gazetteer
+editável <code>data/gazetteer_br.json</code>; variantes longas vencem sobre
+variantes curtas para evitar dupla contagem.</p>
+
+<h3>Síntese por ano</h3>
+<p>Quando há dois ou mais anos distintos no lote, o XLSX cria a aba "Síntese por
+Ano" com métricas descritivas por ano. A janela principal também habilita o
+botão "Síntese do corpus". Não há inferência estatística: são somas e médias
+simples entre documentos do mesmo ano.</p>
+
 <h3>TF-IDF (termos distintivos)</h3>
 <p><b>O que mede:</b> as palavras <i>distintivas</i> de cada documento — não as
 mais frequentes, mas as que diferenciam um documento dos demais do lote.
@@ -254,7 +288,14 @@ editável em <code>data/document_types.json</code>.</p>
 "Corpus analítico"). <b>Citar (análise de conteúdo):</b> Bardin, L. (2011).
 <i>Análise de Conteúdo</i>. São Paulo: Edições 70.</p>
 
-<h2>Estrutura do XLSX exportado</h2>
+<h2>Exportação (XLSX, CSV, JSON)</h2>
+
+<p>O Lupa exporta os resultados em três formatos. O <b>XLSX</b> é a planilha
+formatada para leitura e auditoria manual. O <b>CSV</b> cria uma pasta com
+<code>resultados.csv</code> e arquivos de detalhe separados, usando separador
+<code>;</code> e codificação <code>utf-8-sig</code> para melhor compatibilidade com
+Excel em português. O <b>JSON</b> preserva os dicionários públicos completos de
+cada documento, útil para arquivamento reprodutível e integração com R/Python.</p>
 
 <h3>Aba 1: Contagem de Palavras</h3>
 <p>Linha por documento. Colunas: identificação, metadados detectados, contagens,
@@ -282,10 +323,29 @@ foram definidos, duas colunas por termo (PDF Completo / Corpus Analítico).</p>
 <h3>Aba 8: Concordância (KWIC)</h3>
 <p>Cada ocorrência dos termos de busca com contexto à esquerda e à direita, página e termo.</p>
 
+<h3>Abas adicionais</h3>
+<p>Quando há dados, o XLSX também pode incluir: "Emoções (Palavras)",
+"Menções Territoriais", "Co-ocorrência" e "Síntese por Ano". Essas abas mantêm
+a trilha de auditoria dos novos agregados exibidos na tabela principal.</p>
+
+<h3>Arquivos CSV</h3>
+<p>Ao escolher CSV, o Lupa cria uma pasta com o nome selecionado. O arquivo
+<code>resultados.csv</code> contém as mesmas colunas da primeira aba do XLSX.
+Arquivos de detalhe são criados apenas quando há dados: <code>sentencas.csv</code>,
+<code>palavras.csv</code>, <code>ngramas.csv</code>, <code>categorias.csv</code>,
+<code>kwic.csv</code> e <code>paginas_excluidas.csv</code>.</p>
+
+<h3>Arquivo JSON</h3>
+<p>O JSON contém <code>gerado_por</code> e <code>documentos</code>, com os resultados
+completos de cada documento. Chaves internas iniciadas por sublinhado são
+omitidas para expor apenas dados públicos da análise.</p>
+
 <h2>Atalhos</h2>
 <ul>
     <li><span class="key">Ctrl+O</span> — Adicionar arquivos</li>
-    <li><span class="key">Ctrl+E</span> — Exportar XLSX</li>
+    <li><span class="key">Ctrl+S</span> — Salvar projeto</li>
+    <li><span class="key">Ctrl+Shift+O</span> — Abrir projeto</li>
+    <li><span class="key">Ctrl+E</span> — Exportar resultados</li>
     <li><span class="key">Ctrl+Q</span> — Sair</li>
     <li><span class="key">F1</span> — Esta tela de ajuda</li>
 </ul>

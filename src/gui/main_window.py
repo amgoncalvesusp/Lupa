@@ -38,10 +38,16 @@ from src.gui.styles import STYLE
 from src.gui.workers import ProcessingWorker
 from src.gui.help_dialog import HelpDialog
 from src.gui.detail_dialog import ResultDetailDialog
+from src.gui.summary_dialog import CorpusSummaryDialog
 from src.core.analysis import build_column_specs, build_default_analyzers
+from src.core.corpus_summary import has_multiple_years
 from src.core.exporter import export_to_xlsx
+from src.core.exporter_plain import export_to_csv, export_to_json
 from src.core.ocr_engine import configure_tesseract
+from src.core.project_io import load_project, save_project
 from src.core.term_search import parse_input
+
+SUPPORTED_EXTENSIONS = (".pdf", ".docx", ".txt")
 
 
 class DropZone(QFrame):
@@ -51,7 +57,7 @@ class DropZone(QFrame):
         self.setAcceptDrops(True)
         self.on_files_dropped = on_files_dropped
         layout = QVBoxLayout(self)
-        self.label = QLabel('Arraste PDFs aqui ou clique em "Adicionar Arquivos"')
+        self.label = QLabel('Arraste documentos aqui ou clique em "Adicionar Arquivos"')
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setStyleSheet(
             "color: #6b7280; font-size: 11pt; padding: 14px; background: transparent;"
@@ -62,7 +68,7 @@ class DropZone(QFrame):
         if event.mimeData().hasUrls():
             urls = event.mimeData().urls()
             paths = [u.toLocalFile() for u in urls]
-            has_pdf = any(p.lower().endswith(".pdf") for p in paths)
+            has_pdf = any(p.lower().endswith(SUPPORTED_EXTENSIONS) for p in paths)
             has_dir = any(Path(p).is_dir() for p in paths)
             if has_pdf or has_dir:
                 self.setProperty("active", "true")
@@ -81,9 +87,10 @@ class DropZone(QFrame):
             local = u.toLocalFile()
             p = Path(local)
             if p.is_dir():
-                paths.extend(str(x) for x in p.glob("*.pdf"))
-                paths.extend(str(x) for x in p.glob("*.PDF"))
-            elif local.lower().endswith(".pdf"):
+                for ext in SUPPORTED_EXTENSIONS:
+                    paths.extend(str(x) for x in p.glob(f"*{ext}"))
+                    paths.extend(str(x) for x in p.glob(f"*{ext.upper()}"))
+            elif local.lower().endswith(SUPPORTED_EXTENSIONS):
                 paths.append(local)
         self.setProperty("active", "false")
         self.style().unpolish(self)
@@ -113,12 +120,24 @@ class MainWindow(QMainWindow):
         menubar = self.menuBar()
         # Menu styling comes from the global stylesheet (styles.STYLE).
         file_menu = menubar.addMenu("&Arquivo")
-        act_add = QAction("Adicionar PDFs...", self)
+        act_add = QAction("Adicionar documentos...", self)
         act_add.setShortcut("Ctrl+O")
         act_add.triggered.connect(self.browse_files)
         file_menu.addAction(act_add)
 
-        act_export = QAction("Exportar XLSX...", self)
+        act_open_project = QAction("Abrir projeto...", self)
+        act_open_project.setShortcut("Ctrl+Shift+O")
+        act_open_project.triggered.connect(self.open_project)
+        file_menu.addAction(act_open_project)
+
+        act_save_project = QAction("Salvar projeto...", self)
+        act_save_project.setShortcut("Ctrl+S")
+        act_save_project.triggered.connect(self.save_project)
+        file_menu.addAction(act_save_project)
+
+        file_menu.addSeparator()
+
+        act_export = QAction("Exportar resultados...", self)
         act_export.setShortcut("Ctrl+E")
         act_export.triggered.connect(self.export_results)
         file_menu.addAction(act_export)
@@ -157,7 +176,7 @@ class MainWindow(QMainWindow):
         title.setObjectName("Title")
         title_col.addWidget(title)
         subtitle = QLabel(
-            "Análise de conteúdo e métricas textuais de PDFs — sentimento, "
+            "Análise de conteúdo e métricas textuais de documentos — sentimento, "
             "legibilidade, frequência, concordância (KWIC) e busca de termos"
         )
         subtitle.setObjectName("Subtitle")
@@ -192,6 +211,12 @@ class MainWindow(QMainWindow):
             "Escore de valência por sentença (Hutto & Gilbert, 2014; LeIA). "
             "Gera classe, composto médio e detalhamento por sentença para análise "
             "de conteúdo e núcleos de significação."
+        )
+        self.emotions_checkbox = QCheckBox("Emoções (NRC)")
+        self.emotions_checkbox.setChecked(True)
+        self.emotions_checkbox.setToolTip(
+            "Conta associações lexicais com 8 emoções discretas do NRC EmoLex. "
+            "Usa arquivo editável data/nrc_emolex_pt.txt; se vazio, retorna zeros."
         )
         self.president_checkbox = QCheckBox("Detectar presidente")
         self.president_checkbox.setChecked(True)
@@ -234,6 +259,7 @@ class MainWindow(QMainWindow):
         )
         analyses_row.addWidget(analyses_label)
         analyses_row.addWidget(self.sentiment_checkbox)
+        analyses_row.addWidget(self.emotions_checkbox)
         analyses_row.addWidget(self.textmetrics_checkbox)
         analyses_row.addWidget(self.kwic_checkbox)
         analyses_row.addWidget(self.president_checkbox)
@@ -300,13 +326,13 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(splitter, stretch=2)
 
         action_row = QHBoxLayout()
-        self.btn_process = QPushButton("▶  Processar PDFs")
+        self.btn_process = QPushButton("▶  Processar documentos")
         self.btn_process.setObjectName("PrimaryButton")
         self.btn_process.clicked.connect(self.start_processing)
         self.btn_cancel = QPushButton("✖  Cancelar")
         self.btn_cancel.setEnabled(False)
         self.btn_cancel.clicked.connect(self.cancel_processing)
-        self.btn_export = QPushButton("⬇  Exportar XLSX")
+        self.btn_export = QPushButton("⬇  Exportar")
         self.btn_export.setEnabled(False)
         self.btn_export.clicked.connect(self.export_results)
         action_row.addWidget(self.btn_process)
@@ -330,6 +356,10 @@ class MainWindow(QMainWindow):
         self.btn_details = QPushButton("🔍  Ver detalhes")
         self.btn_details.setEnabled(False)
         self.btn_details.clicked.connect(self.open_selected_details)
+        self.btn_summary = QPushButton("Síntese do corpus")
+        self.btn_summary.setEnabled(False)
+        self.btn_summary.clicked.connect(self.open_corpus_summary)
+        result_row.addWidget(self.btn_summary)
         result_row.addWidget(self.btn_details)
         main_layout.addLayout(result_row)
 
@@ -360,12 +390,17 @@ class MainWindow(QMainWindow):
     def open_selected_details(self):
         self.open_result_details(self.results_table.currentRow())
 
+    def open_corpus_summary(self):
+        if self.results:
+            dlg = CorpusSummaryDialog(self.results, self)
+            dlg.exec()
+
     def show_about(self):
         QMessageBox.about(
             self,
             "Sobre — Lupa",
             "<h3>Lupa</h3>"
-            "<p>Análise de conteúdo e métricas textuais de PDFs para pesquisa acadêmica.</p>"
+            "<p>Análise de conteúdo e métricas textuais de documentos para pesquisa acadêmica.</p>"
             "<p>Versão 1.0 — sentimento (LeIA/VADER-PT), legibilidade, "
             "diversidade lexical, palavras-chave, concordância KWIC, busca de "
             "termos e OCR Tesseract.</p>"
@@ -378,6 +413,68 @@ class MainWindow(QMainWindow):
             "<p><i>Programa de Pós-graduação em Desenvolvimento Territorial "
             "e Meio Ambiente — UNIARA</i></p>",
         )
+
+    def save_project(self):
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Salvar projeto",
+            "projeto.lupa.json",
+            "Projeto Lupa (*.lupa.json);;JSON (*.json)",
+        )
+        if not path:
+            return
+        try:
+            save_project(
+                path,
+                {
+                    "termos_raw": self.terms_input.toPlainText(),
+                    "flags": {
+                        "ocr": self.ocr_checkbox.isChecked(),
+                        "sentimento": self.sentiment_checkbox.isChecked(),
+                        "emocoes": self.emotions_checkbox.isChecked(),
+                        "presidente": self.president_checkbox.isChecked(),
+                        "metricas": self.textmetrics_checkbox.isChecked(),
+                        "kwic": self.kwic_checkbox.isChecked(),
+                    },
+                    "arquivos": self.pdf_files,
+                },
+            )
+            self.status_bar.showMessage(f"Projeto salvo: {path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Erro ao salvar projeto", str(e))
+
+    def open_project(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Abrir projeto",
+            "",
+            "Projeto Lupa (*.lupa.json);;JSON (*.json)",
+        )
+        if not path:
+            return
+        try:
+            project = load_project(path)
+            flags = project.get("flags", {})
+            self.terms_input.setPlainText(project.get("termos_raw", ""))
+            self.ocr_checkbox.setChecked(bool(flags.get("ocr", True)))
+            self.sentiment_checkbox.setChecked(bool(flags.get("sentimento", True)))
+            self.emotions_checkbox.setChecked(bool(flags.get("emocoes", True)))
+            self.president_checkbox.setChecked(bool(flags.get("presidente", True)))
+            self.textmetrics_checkbox.setChecked(bool(flags.get("metricas", True)))
+            self.kwic_checkbox.setChecked(bool(flags.get("kwic", True)))
+            self.clear_files()
+            self.add_files(project.get("arquivos", []))
+            missing = project.get("ausentes", [])
+            if missing:
+                QMessageBox.warning(
+                    self,
+                    "Arquivos ausentes",
+                    "Alguns arquivos do projeto não foram encontrados:\n\n"
+                    + "\n".join(missing),
+                )
+            self.status_bar.showMessage(f"Projeto aberto: {path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Erro ao abrir projeto", str(e))
 
     def _check_tesseract(self):
         if configure_tesseract():
@@ -393,7 +490,10 @@ class MainWindow(QMainWindow):
 
     def browse_files(self):
         paths, _ = QFileDialog.getOpenFileNames(
-            self, "Selecionar PDFs", "", "PDF Files (*.pdf)"
+            self,
+            "Selecionar documentos",
+            "",
+            "Documentos (*.pdf *.docx *.txt);;PDF (*.pdf);;Word (*.docx);;Texto (*.txt)",
         )
         if paths:
             self.add_files(paths)
@@ -401,7 +501,7 @@ class MainWindow(QMainWindow):
     def add_files(self, paths: List[str]):
         added = 0
         for p in paths:
-            if p not in self.pdf_files and p.lower().endswith(".pdf"):
+            if p not in self.pdf_files and p.lower().endswith(SUPPORTED_EXTENSIONS):
                 self.pdf_files.append(p)
                 item = QListWidgetItem(f"📄  {Path(p).name}")
                 item.setToolTip(p)
@@ -417,12 +517,13 @@ class MainWindow(QMainWindow):
         self.results.clear()
         self.results_table.setRowCount(0)
         self.btn_export.setEnabled(False)
+        self.btn_summary.setEnabled(False)
         self.status_bar.showMessage("Lista limpa.")
 
     def start_processing(self):
         if not self.pdf_files:
             QMessageBox.warning(
-                self, "Nenhum arquivo", "Adicione PDFs antes de processar."
+                self, "Nenhum arquivo", "Adicione documentos antes de processar."
             )
             return
 
@@ -430,6 +531,7 @@ class MainWindow(QMainWindow):
         self._search_terms = search_terms
         self._categories = categories
         self._enable_sentiment = self.sentiment_checkbox.isChecked()
+        self._enable_emotions = self.emotions_checkbox.isChecked()
         self._enable_president = self.president_checkbox.isChecked()
         self._enable_textmetrics = self.textmetrics_checkbox.isChecked()
         self._enable_kwic = self.kwic_checkbox.isChecked()
@@ -441,6 +543,7 @@ class MainWindow(QMainWindow):
         self.btn_add.setEnabled(False)
         self.btn_clear.setEnabled(False)
         self.btn_export.setEnabled(False)
+        self.btn_summary.setEnabled(False)
         self.progress.setVisible(True)
         self.progress.setRange(0, len(self.pdf_files) * 100)
         self.progress.setValue(0)
@@ -451,6 +554,7 @@ class MainWindow(QMainWindow):
             enable_ocr=self.ocr_checkbox.isChecked(),
             search_terms=search_terms,
             enable_sentiment=self._enable_sentiment,
+            enable_emotions=self._enable_emotions,
             enable_president=self._enable_president,
             enable_textmetrics=self._enable_textmetrics,
             enable_kwic=self._enable_kwic,
@@ -532,6 +636,7 @@ class MainWindow(QMainWindow):
         self.btn_add.setEnabled(True)
         self.btn_clear.setEnabled(True)
         self.btn_export.setEnabled(len(results) > 0)
+        self.btn_summary.setEnabled(has_multiple_years(results))
         self.progress.setVisible(False)
         self.status_bar.showMessage(
             f"Concluído. {len(results)} arquivo(s) processado(s)."
@@ -606,22 +711,49 @@ class MainWindow(QMainWindow):
                 self, "Sem resultados", "Processe ao menos um PDF antes de exportar."
             )
             return
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Salvar resultados", "contagem_palavras.xlsx", "Excel Files (*.xlsx)"
+        path, selected_filter = QFileDialog.getSaveFileName(
+            self,
+            "Salvar resultados",
+            "contagem_palavras",
+            "Excel (*.xlsx);;CSV (*.csv);;JSON (*.json)",
         )
         if not path:
             return
         try:
+            path_obj = Path(path)
+            if not path_obj.suffix:
+                if "CSV" in selected_filter:
+                    path_obj = path_obj.with_suffix(".csv")
+                elif "JSON" in selected_filter:
+                    path_obj = path_obj.with_suffix(".json")
+                else:
+                    path_obj = path_obj.with_suffix(".xlsx")
+
             analyzers = build_default_analyzers(
                 getattr(self, "_search_terms", []),
                 detect_president=getattr(self, "_enable_president", True),
                 detect_sentiment=getattr(self, "_enable_sentiment", True),
+                detect_emotions=getattr(self, "_enable_emotions", True),
                 detect_textmetrics=getattr(self, "_enable_textmetrics", True),
+                detect_kwic=getattr(self, "_enable_kwic", True),
                 categories=getattr(self, "_categories", []),
             )
             column_specs = build_column_specs(analyzers)
-            export_to_xlsx(self.results, path, column_specs)
-            QMessageBox.information(self, "Exportado", f"Arquivo salvo em:\n{path}")
-            self.status_bar.showMessage(f"Exportado: {path}")
+            suffix = path_obj.suffix.lower()
+            if suffix == ".csv":
+                output_dir = path_obj.with_suffix("")
+                export_to_csv(self.results, output_dir, column_specs)
+                exported_to = str(output_dir)
+                message = f"Arquivos CSV salvos em:\n{exported_to}"
+            elif suffix == ".json":
+                export_to_json(self.results, path_obj)
+                exported_to = str(path_obj)
+                message = f"Arquivo JSON salvo em:\n{exported_to}"
+            else:
+                export_to_xlsx(self.results, path_obj, column_specs)
+                exported_to = str(path_obj)
+                message = f"Arquivo XLSX salvo em:\n{exported_to}"
+            QMessageBox.information(self, "Exportado", message)
+            self.status_bar.showMessage(f"Exportado: {exported_to}")
         except Exception as e:
             QMessageBox.critical(self, "Erro ao exportar", str(e))

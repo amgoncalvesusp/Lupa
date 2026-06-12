@@ -4,6 +4,7 @@ from PyInstaller.utils.hooks import collect_submodules
 hiddenimports = ['PyQt6.QtCore', 'PyQt6.QtGui', 'PyQt6.QtWidgets']
 hiddenimports += collect_submodules('fitz')
 hiddenimports += collect_submodules('openpyxl')
+hiddenimports += collect_submodules('docx')
 hiddenimports += collect_submodules('regex')
 hiddenimports += collect_submodules('pytesseract')
 # Vendored LeIA (VADER-PT) sentiment engine — imported lazily.

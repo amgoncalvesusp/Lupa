@@ -1,0 +1,15 @@
+# NRC EmoLex PT-BR associations for Lupa.
+#
+# Expected format:
+# palavra<TAB>emocao
+#
+# One association per line, only positive associations (=1), lowercase and
+# preferably accent-free. Emotions accepted in Portuguese or English:
+# alegria/joy, tristeza/sadness, raiva/anger, medo/fear, confiança/trust,
+# repulsa/disgust, surpresa/surprise, antecipação/anticipation.
+#
+# The original NRC Word-Emotion Association Lexicon is free for research use
+# but has its own distribution terms. To keep Lupa redistributable, this file
+# is intentionally editable and may be populated by the researcher with the
+# Portuguese NRC entries licensed for their use. If left empty, the emotion
+# analysis returns zeros without breaking the processing pipeline.

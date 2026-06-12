@@ -65,6 +65,7 @@ if exist "%TESS_DIR%\tesseract.exe" (
         --hidden-import PyQt6.QtWidgets ^
         --collect-submodules fitz ^
         --collect-submodules openpyxl ^
+        --collect-submodules docx ^
         --collect-submodules regex ^
         --collect-submodules pytesseract ^
         --hidden-import src.core.analysis.vendor.leia.leia ^
@@ -84,6 +85,7 @@ if exist "%TESS_DIR%\tesseract.exe" (
         --hidden-import PyQt6.QtWidgets ^
         --collect-submodules fitz ^
         --collect-submodules openpyxl ^
+        --collect-submodules docx ^
         --collect-submodules regex ^
         --collect-submodules pytesseract ^
         --hidden-import src.core.analysis.vendor.leia.leia ^

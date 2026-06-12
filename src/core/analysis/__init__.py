@@ -10,7 +10,10 @@ from typing import List, Tuple
 
 from .base import Analyzer, ColumnSpec, DocumentContext
 from .categories import CategoryAnalyzer
+from .cooccurrence import CooccurrenceAnalyzer
 from .doc_stats import DocStatsAnalyzer
+from .emotions import EmotionAnalyzer
+from .geography import GeographyAnalyzer
 from .keywords import KeywordAnalyzer
 from .kwic import KwicAnalyzer
 from .lexical_diversity import LexicalDiversityAnalyzer
@@ -25,8 +28,11 @@ __all__ = [
     "Analyzer",
     "CategoryAnalyzer",
     "ColumnSpec",
+    "CooccurrenceAnalyzer",
     "DocumentContext",
     "DocStatsAnalyzer",
+    "EmotionAnalyzer",
+    "GeographyAnalyzer",
     "KeywordAnalyzer",
     "KwicAnalyzer",
     "LexicalDiversityAnalyzer",
@@ -45,6 +51,7 @@ def build_default_analyzers(
     search_terms: List[Tuple[str, bool]] = None,
     detect_president: bool = True,
     detect_sentiment: bool = True,
+    detect_emotions: bool = True,
     detect_textmetrics: bool = True,
     detect_kwic: bool = True,
     categories=None,
@@ -60,14 +67,18 @@ def build_default_analyzers(
         analyzers.append(LexicalDiversityAnalyzer())
         analyzers.append(KeywordAnalyzer())
         analyzers.append(NgramAnalyzer())
+        analyzers.append(GeographyAnalyzer())
     if detect_sentiment:
         analyzers.append(SentimentAnalyzer())
+    if detect_emotions:
+        analyzers.append(EmotionAnalyzer())
     if categories:
         analyzers.append(CategoryAnalyzer(categories))
     analyzers.append(TermSearchAnalyzer(search_terms or []))
     if detect_kwic:
-        # Detail-only (no columns); produces concordance lines for the terms.
+        # Detail-only analyzers: qualitative concordance and sentence links.
         analyzers.append(KwicAnalyzer(search_terms or []))
+        analyzers.append(CooccurrenceAnalyzer(search_terms or []))
     return analyzers
 
 
