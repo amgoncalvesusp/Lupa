@@ -38,9 +38,8 @@ from src.gui.styles import STYLE
 from src.gui.workers import ProcessingWorker
 from src.gui.help_dialog import HelpDialog
 from src.gui.detail_dialog import ResultDetailDialog
-from src.gui.summary_dialog import CorpusSummaryDialog
+from src.gui.charts import ChartDialog
 from src.core.analysis import build_column_specs, build_default_analyzers
-from src.core.corpus_summary import has_multiple_years
 from src.core.exporter import export_to_xlsx
 from src.core.exporter_plain import export_to_csv, export_to_json
 from src.core.ocr_engine import configure_tesseract
@@ -356,10 +355,10 @@ class MainWindow(QMainWindow):
         self.btn_details = QPushButton("🔍  Ver detalhes")
         self.btn_details.setEnabled(False)
         self.btn_details.clicked.connect(self.open_selected_details)
-        self.btn_summary = QPushButton("Síntese do corpus")
-        self.btn_summary.setEnabled(False)
-        self.btn_summary.clicked.connect(self.open_corpus_summary)
-        result_row.addWidget(self.btn_summary)
+        self.btn_charts = QPushButton("Gráficos")
+        self.btn_charts.setEnabled(False)
+        self.btn_charts.clicked.connect(self.open_charts)
+        result_row.addWidget(self.btn_charts)
         result_row.addWidget(self.btn_details)
         main_layout.addLayout(result_row)
 
@@ -390,10 +389,17 @@ class MainWindow(QMainWindow):
     def open_selected_details(self):
         self.open_result_details(self.results_table.currentRow())
 
-    def open_corpus_summary(self):
+    def open_charts(self):
         if self.results:
-            dlg = CorpusSummaryDialog(self.results, self)
+            dlg = ChartDialog(self.results, self)
+            dlg.document_requested.connect(self.open_result_by_filename)
             dlg.exec()
+
+    def open_result_by_filename(self, filename: str):
+        for row, result in enumerate(self.results):
+            if result.get("filename") == filename:
+                self.open_result_details(row)
+                return
 
     def show_about(self):
         QMessageBox.about(
@@ -517,7 +523,7 @@ class MainWindow(QMainWindow):
         self.results.clear()
         self.results_table.setRowCount(0)
         self.btn_export.setEnabled(False)
-        self.btn_summary.setEnabled(False)
+        self.btn_charts.setEnabled(False)
         self.status_bar.showMessage("Lista limpa.")
 
     def start_processing(self):
@@ -543,7 +549,7 @@ class MainWindow(QMainWindow):
         self.btn_add.setEnabled(False)
         self.btn_clear.setEnabled(False)
         self.btn_export.setEnabled(False)
-        self.btn_summary.setEnabled(False)
+        self.btn_charts.setEnabled(False)
         self.progress.setVisible(True)
         self.progress.setRange(0, len(self.pdf_files) * 100)
         self.progress.setValue(0)
@@ -636,7 +642,7 @@ class MainWindow(QMainWindow):
         self.btn_add.setEnabled(True)
         self.btn_clear.setEnabled(True)
         self.btn_export.setEnabled(len(results) > 0)
-        self.btn_summary.setEnabled(has_multiple_years(results))
+        self.btn_charts.setEnabled(bool(results))
         self.progress.setVisible(False)
         self.status_bar.showMessage(
             f"Concluído. {len(results)} arquivo(s) processado(s)."

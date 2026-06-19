@@ -42,6 +42,7 @@ Resultados em interface gráfica moderna e exportáveis em XLSX formatado, CSV e
 - Métricas textuais: legibilidade (Flesch-PT), diversidade lexical (TTR / Guiraud) e frequência de palavras-chave (com aba detalhada no XLSX)
 - Concordância KWIC: contexto ao redor de cada ocorrência dos termos de busca (aba "Concordância (KWIC)"), a unidade de contexto da análise de conteúdo
 - Co-ocorrência de termos por sentença e síntese temporal por ano do corpus
+- Central de gráficos interativos: séries temporais, comparação, sentimento empilhado, dispersão lexical, heatmap de coocorrência e perfil territorial
 - Menções territoriais brasileiras via `data/gazetteer_br.json`
 - Salvar e abrir projetos `.lupa.json` com arquivos, termos, categorias e flags
 - Exportação em XLSX formatado, CSV interoperável (`;`, `utf-8-sig`) e JSON para arquivamento/reuso em R ou Python
@@ -239,8 +240,26 @@ aparece na coluna "Menções territoriais" e na aba **"Menções Territoriais"**
 Quando o lote possui dois ou mais anos distintos, o XLSX inclui a aba
 **"Síntese por Ano"**: número de documentos, palavras do corpus, médias
 descritivas de sentimento/legibilidade e contagens por termo/categoria. A
-janela principal também oferece o botão **Síntese do corpus** após o
+janela principal também oferece o botão **Gráficos** após o
 processamento.
+
+### Gráficos interativos
+
+O botão **Gráficos** abre uma central visual baseada em `QPainter`, sem
+dependências pesadas e totalmente offline. Estão disponíveis:
+
+- **Série temporal:** combina volume, sentimento, legibilidade, termos e categorias por ano.
+- **Comparação entre documentos:** palavras, termo, categoria, território, emoção ou palavra-chave selecionada.
+- **Sentimento:** barras empilhadas de sentenças positivas, neutras e negativas, por documento ou ano.
+- **Dispersão lexical:** legibilidade × TTR; tamanho do ponto representa palavras e cor representa sentimento.
+- **Matriz de coocorrência:** heatmap simétrico dos pares de termos na mesma sentença.
+- **Perfil territorial:** ranking de estados, regiões e biomas mencionados.
+
+Os controles permitem filtrar ano/documento, normalizar contagens por mil
+palavras, ocultar séries pela legenda, aplicar zoom com a roda do mouse, copiar
+os dados exibidos e exportar o gráfico em PNG. Clicar em uma barra ou ponto de
+documento abre seus detalhes. Os gráficos são descritivos: não representam
+inferência estatística nem relação causal.
 
 ### Detecção de presidente (opcional)
 

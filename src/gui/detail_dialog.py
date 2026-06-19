@@ -24,6 +24,8 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.gui.charts import ChartDialog
+
 POSITIVE_COLOR = QColor("#15803d")
 NEGATIVE_COLOR = QColor("#b4413c")
 
@@ -62,6 +64,7 @@ def _fmt(value) -> str:
 class ResultDetailDialog(QDialog):
     def __init__(self, result: Dict, parent=None):
         super().__init__(parent)
+        self._result = result
         self.setWindowTitle(f"Detalhes — {result.get('filename', '')}")
         self.resize(1020, 720)
         self.setStyleSheet("QDialog { background-color: #f4f1ea; }")
@@ -114,6 +117,9 @@ class ResultDetailDialog(QDialog):
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
+        btn_charts = QPushButton("Gráficos deste documento")
+        btn_charts.clicked.connect(self._open_charts)
+        btn_row.addWidget(btn_charts)
         btn_close = QPushButton("Fechar")
         btn_close.setStyleSheet(
             "QPushButton { background-color: #0f766e; color: #ffffff; border: none;"
@@ -123,6 +129,10 @@ class ResultDetailDialog(QDialog):
         btn_close.clicked.connect(self.accept)
         btn_row.addWidget(btn_close)
         layout.addLayout(btn_row)
+
+    def _open_charts(self):
+        dialog = ChartDialog([self._result], self)
+        dialog.exec()
 
     # ---- tabs -----------------------------------------------------------
 

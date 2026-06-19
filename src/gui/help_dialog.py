@@ -260,8 +260,20 @@ variantes curtas para evitar dupla contagem.</p>
 <h3>Síntese por ano</h3>
 <p>Quando há dois ou mais anos distintos no lote, o XLSX cria a aba "Síntese por
 Ano" com métricas descritivas por ano. A janela principal também habilita o
-botão "Síntese do corpus". Não há inferência estatística: são somas e médias
+botão "Gráficos". Não há inferência estatística: são somas e médias
 simples entre documentos do mesmo ano.</p>
+
+<h3>Gráficos interativos</h3>
+<p>O botão <b>Gráficos</b> reúne seis visualizações: série temporal, comparação
+entre documentos, sentimento empilhado, dispersão legibilidade × diversidade
+lexical, matriz de coocorrência e perfil territorial. É possível filtrar ano e
+documento, normalizar contagens por mil palavras, ocultar séries, usar a roda do
+mouse para zoom, copiar os dados exibidos e exportar PNG.</p>
+<p>O tamanho dos pontos da dispersão representa palavras do corpus; a cor indica
+sentimento. No heatmap, a intensidade representa sentenças em que o par de termos
+coocorre. Clicar em barras ou pontos associados a documentos abre os detalhes.
+Todas as visualizações são descritivas e não implicam causalidade ou inferência
+estatística.</p>
 
 <h3>TF-IDF (termos distintivos)</h3>
 <p><b>O que mede:</b> as palavras <i>distintivas</i> de cada documento — não as
