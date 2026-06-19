@@ -286,4 +286,162 @@ QMenu::item:selected {
 QSplitter::handle {
     background: transparent;
 }
+
+/* ---- Tabbed research workspace ---- */
+QFrame#AppHeader {
+    background-color: #ffffff;
+    border: none;
+    border-bottom: 3px solid #0f766e;
+    min-height: 52px;
+    max-height: 52px;
+}
+QLabel#AppBrand {
+    background: transparent;
+    color: #103d3a;
+    font-family: "Georgia", "Cambria", serif;
+    font-size: 22pt;
+    font-weight: 600;
+}
+QLabel#AppSubtitle {
+    background: transparent;
+    color: #5c6670;
+    font-size: 10pt;
+}
+QLabel#HeaderContext {
+    background: transparent;
+    color: #b5670a;
+    font-size: 8pt;
+    font-weight: 700;
+}
+QFrame#HeaderSeparator {
+    color: #ddd5c6;
+    background-color: #ddd5c6;
+    min-width: 1px;
+    max-width: 1px;
+    min-height: 28px;
+}
+QPushButton#HeaderIconButton,
+QPushButton#InlineIconButton,
+QPushButton#DangerIconButton {
+    min-width: 30px;
+    max-width: 30px;
+    min-height: 30px;
+    max-height: 30px;
+    padding: 0;
+    border-radius: 6px;
+}
+QPushButton#DangerIconButton {
+    color: #b4413c;
+    border-color: #e2b6b1;
+}
+QTabWidget#WorkspaceTabs::pane {
+    background-color: #f4f1ea;
+    border: none;
+    top: -1px;
+}
+QTabWidget#WorkspaceTabs QTabBar::tab {
+    background-color: #ffffff;
+    color: #5c6670;
+    min-width: 150px;
+    padding: 12px 22px 10px 22px;
+    border: none;
+    border-bottom: 3px solid #e4ddcf;
+    font-size: 10pt;
+    font-weight: 600;
+}
+QTabWidget#WorkspaceTabs QTabBar::tab:selected {
+    color: #0f766e;
+    border-bottom: 3px solid #0f766e;
+}
+QTabWidget#WorkspaceTabs QTabBar::tab:hover:!selected {
+    color: #103d3a;
+    background-color: #eef6f4;
+}
+QTabWidget#WorkspaceTabs QTabBar::tab:disabled {
+    color: #b4ae9f;
+    background-color: #faf7f0;
+}
+QFrame#WorkspacePanel {
+    background-color: #ffffff;
+    border: 1px solid #ddd5c6;
+    border-radius: 6px;
+}
+QLabel#WorkspaceTitle {
+    background: transparent;
+    color: #103d3a;
+    font-size: 12pt;
+    font-weight: 700;
+}
+QLabel#FieldLabel {
+    background: transparent;
+    color: #b5670a;
+    font-size: 8pt;
+    font-weight: 700;
+}
+QLabel#MutedText {
+    background: transparent;
+    color: #6b7280;
+    font-size: 9pt;
+}
+QFrame#ActionBar {
+    background-color: #e9f1ef;
+    border: 1px solid #cfe0dc;
+    border-radius: 6px;
+}
+QFrame#SummaryBand {
+    background-color: #103d3a;
+    border: none;
+    border-radius: 6px;
+}
+QFrame#SummaryBand QWidget,
+QFrame#SummaryBand QLabel {
+    background: transparent;
+}
+QLabel#SummaryCaption {
+    color: #9fc7c1;
+    font-size: 8pt;
+    font-weight: 700;
+}
+QLabel#SummaryValue {
+    color: #ffffff;
+    font-size: 16pt;
+    font-weight: 600;
+}
+QLabel#EmptyState {
+    background-color: #ffffff;
+    color: #8a8475;
+    border: 1px dashed #c8c0ae;
+    border-radius: 6px;
+    font-size: 11pt;
+}
+QLabel#DropZoneLabel {
+    background: transparent;
+    color: #6b7280;
+    font-size: 10pt;
+}
+QListWidget#CorpusFileList,
+QTableWidget#ResultsTable {
+    border-radius: 6px;
+}
+QComboBox {
+    background-color: #ffffff;
+    color: #1f2933;
+    border: 1px solid #d9d2c2;
+    border-radius: 6px;
+    padding: 7px 10px;
+    min-height: 18px;
+}
+QComboBox:focus {
+    border-color: #0f766e;
+}
+QComboBox::drop-down {
+    border: none;
+    width: 24px;
+}
+QPushButton,
+QPlainTextEdit,
+QListWidget,
+QTableWidget {
+    border-radius: 6px;
+}
 """

@@ -4,32 +4,16 @@ from pathlib import Path
 from typing import List
 
 from PyQt6.QtCore import Qt, QThread
-from PyQt6.QtGui import (
-    QAction,
-    QColor,
-    QDragEnterEvent,
-    QDropEvent,
-    QKeySequence,
-    QShortcut,
-)
+from PyQt6.QtGui import QAction, QColor
 from PyQt6.QtWidgets import (
-    QCheckBox,
     QFileDialog,
-    QFrame,
-    QHBoxLayout,
     QHeaderView,
-    QLabel,
-    QListWidget,
     QListWidgetItem,
     QMainWindow,
     QMessageBox,
-    QPlainTextEdit,
-    QProgressBar,
-    QPushButton,
-    QSplitter,
     QStatusBar,
-    QTableWidget,
     QTableWidgetItem,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -38,65 +22,19 @@ from src.gui.styles import STYLE
 from src.gui.workers import ProcessingWorker
 from src.gui.help_dialog import HelpDialog
 from src.gui.detail_dialog import ResultDetailDialog
-from src.gui.charts import ChartDialog
+from src.gui.charts import ChartWorkspace
+from src.gui.workspace import (
+    ApplicationHeader,
+    ResultsWorkspace,
+    SetupWorkspace,
+    SUPPORTED_EXTENSIONS,
+)
 from src.core.analysis import build_column_specs, build_default_analyzers
 from src.core.exporter import export_to_xlsx
 from src.core.exporter_plain import export_to_csv, export_to_json
 from src.core.ocr_engine import configure_tesseract
 from src.core.project_io import load_project, save_project
 from src.core.term_search import parse_input
-
-SUPPORTED_EXTENSIONS = (".pdf", ".docx", ".txt")
-
-
-class DropZone(QFrame):
-    def __init__(self, on_files_dropped):
-        super().__init__()
-        self.setObjectName("DropZone")
-        self.setAcceptDrops(True)
-        self.on_files_dropped = on_files_dropped
-        layout = QVBoxLayout(self)
-        self.label = QLabel('Arraste documentos aqui ou clique em "Adicionar Arquivos"')
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.label.setStyleSheet(
-            "color: #6b7280; font-size: 11pt; padding: 14px; background: transparent;"
-        )
-        layout.addWidget(self.label)
-
-    def dragEnterEvent(self, event: QDragEnterEvent):
-        if event.mimeData().hasUrls():
-            urls = event.mimeData().urls()
-            paths = [u.toLocalFile() for u in urls]
-            has_pdf = any(p.lower().endswith(SUPPORTED_EXTENSIONS) for p in paths)
-            has_dir = any(Path(p).is_dir() for p in paths)
-            if has_pdf or has_dir:
-                self.setProperty("active", "true")
-                self.style().unpolish(self)
-                self.style().polish(self)
-                event.acceptProposedAction()
-
-    def dragLeaveEvent(self, event):
-        self.setProperty("active", "false")
-        self.style().unpolish(self)
-        self.style().polish(self)
-
-    def dropEvent(self, event: QDropEvent):
-        paths = []
-        for u in event.mimeData().urls():
-            local = u.toLocalFile()
-            p = Path(local)
-            if p.is_dir():
-                for ext in SUPPORTED_EXTENSIONS:
-                    paths.extend(str(x) for x in p.glob(f"*{ext}"))
-                    paths.extend(str(x) for x in p.glob(f"*{ext.upper()}"))
-            elif local.lower().endswith(SUPPORTED_EXTENSIONS):
-                paths.append(local)
-        self.setProperty("active", "false")
-        self.style().unpolish(self)
-        self.style().polish(self)
-        if paths:
-            self.on_files_dropped(paths)
-
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -160,218 +98,66 @@ class MainWindow(QMainWindow):
     def _build_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
-        main_layout = QVBoxLayout(central)
-        main_layout.setContentsMargins(20, 14, 20, 14)
-        main_layout.setSpacing(10)
+        layout = QVBoxLayout(central)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
-        header_band = QFrame()
-        header_band.setObjectName("HeaderBand")
-        band_layout = QHBoxLayout(header_band)
-        band_layout.setContentsMargins(24, 18, 24, 18)
+        self.app_header = ApplicationHeader()
+        self.app_header.help_requested.connect(self.show_help)
+        layout.addWidget(self.app_header)
 
-        title_col = QVBoxLayout()
-        title_col.setSpacing(2)
-        title = QLabel("Lupa")
-        title.setObjectName("Title")
-        title_col.addWidget(title)
-        subtitle = QLabel(
-            "Análise de conteúdo e métricas textuais de documentos — sentimento, "
-            "legibilidade, frequência, concordância (KWIC) e busca de termos"
-        )
-        subtitle.setObjectName("Subtitle")
-        subtitle.setWordWrap(True)
-        title_col.addWidget(subtitle)
-        band_layout.addLayout(title_col, stretch=1)
+        self.workspace_tabs = QTabWidget()
+        self.workspace_tabs.setObjectName("WorkspaceTabs")
+        self.setup_workspace = SetupWorkspace()
+        self.results_workspace = ResultsWorkspace()
+        self.charts_workspace = ChartWorkspace([])
+        self.charts_workspace.document_requested.connect(self.open_result_by_filename)
 
-        self.btn_help = QPushButton("❓  Como usar")
-        self.btn_help.setObjectName("GhostButton")
-        self.btn_help.clicked.connect(self.show_help)
-        band_layout.addWidget(self.btn_help, alignment=Qt.AlignmentFlag.AlignTop)
-        main_layout.addWidget(header_band)
+        self.workspace_tabs.addTab(self.setup_workspace, "Corpus")
+        self.workspace_tabs.addTab(self.results_workspace, "Resultados")
+        self.workspace_tabs.addTab(self.charts_workspace, "Gráficos")
+        self.workspace_tabs.setTabEnabled(1, False)
+        self.workspace_tabs.setTabEnabled(2, False)
+        layout.addWidget(self.workspace_tabs, stretch=1)
 
-        self.drop_zone = DropZone(self.add_files)
-        main_layout.addWidget(self.drop_zone)
+        self.setup_workspace.add_requested.connect(self.browse_files)
+        self.setup_workspace.clear_requested.connect(self.clear_files)
+        self.setup_workspace.process_requested.connect(self.start_processing)
+        self.setup_workspace.cancel_requested.connect(self.cancel_processing)
+        self.setup_workspace.methodology_requested.connect(self.show_help)
+        self.setup_workspace.search_help_requested.connect(self.show_help)
+        self.setup_workspace.files_dropped.connect(self.add_files)
+        self.results_workspace.export_requested.connect(self.export_results)
+        self.results_workspace.details_requested.connect(self.open_selected_details)
+        self.results_workspace.charts_requested.connect(self.open_charts)
 
-        options_card = QFrame()
-        options_card.setObjectName("Card")
-        card_layout = QVBoxLayout(options_card)
-        card_layout.setContentsMargins(14, 10, 14, 12)
-        card_layout.setSpacing(6)
-        file_row = QHBoxLayout()
-        file_row.setSpacing(10)
-        self.btn_add = QPushButton("➕  Adicionar Arquivos")
-        self.btn_clear = QPushButton("🗑  Limpar Lista")
-        self.btn_clear.setObjectName("DangerButton")
-        self.ocr_checkbox = QCheckBox("Aplicar OCR em páginas escaneadas (Tesseract)")
-        self.ocr_checkbox.setChecked(True)
-        self.sentiment_checkbox = QCheckBox("Análise de sentimento (LeIA / VADER-PT)")
-        self.sentiment_checkbox.setChecked(True)
-        self.sentiment_checkbox.setToolTip(
-            "Escore de valência por sentença (Hutto & Gilbert, 2014; LeIA). "
-            "Gera classe, composto médio e detalhamento por sentença para análise "
-            "de conteúdo e núcleos de significação."
-        )
-        self.emotions_checkbox = QCheckBox("Emoções (NRC)")
-        self.emotions_checkbox.setChecked(True)
-        self.emotions_checkbox.setToolTip(
-            "Conta associações lexicais com 8 emoções discretas do NRC EmoLex. "
-            "Usa arquivo editável data/nrc_emolex_pt.txt; se vazio, retorna zeros."
-        )
-        self.president_checkbox = QCheckBox("Detectar presidente")
-        self.president_checkbox.setChecked(True)
-        self.president_checkbox.setToolTip(
-            "Identifica o chefe de Estado a partir do conteúdo (lista em "
-            "data/presidents.json). Desative para corpora genéricos."
-        )
-        self.textmetrics_checkbox = QCheckBox("Métricas textuais")
-        self.textmetrics_checkbox.setChecked(True)
-        self.textmetrics_checkbox.setToolTip(
-            "Legibilidade (Flesch-PT), diversidade lexical (TTR/Guiraud) e "
-            "frequência de palavras-chave. Exportadas no XLSX (incl. aba "
-            "'Frequência de Palavras') para análise de conteúdo."
-        )
-        self.kwic_checkbox = QCheckBox("Concordância (KWIC)")
-        self.kwic_checkbox.setChecked(True)
-        self.kwic_checkbox.setToolTip(
-            "Para cada termo de busca, registra o contexto ao redor de cada "
-            "ocorrência (aba 'Concordância (KWIC)' no XLSX). Requer termos de "
-            "busca. Unidade de contexto para análise de conteúdo."
-        )
-        # Row 1 — file management + extraction option
-        file_row.addWidget(self.btn_add)
-        file_row.addWidget(self.btn_clear)
-        file_row.addStretch()
-        file_row.addWidget(self.ocr_checkbox)
-        card_layout.addLayout(file_row)
+        self.drop_zone = self.setup_workspace.drop_zone
+        self.btn_add = self.setup_workspace.btn_add
+        self.btn_clear = self.setup_workspace.btn_clear
+        self.ocr_checkbox = self.setup_workspace.ocr_checkbox
+        self.sentiment_checkbox = self.setup_workspace.sentiment_checkbox
+        self.emotions_checkbox = self.setup_workspace.emotions_checkbox
+        self.president_checkbox = self.setup_workspace.president_checkbox
+        self.textmetrics_checkbox = self.setup_workspace.textmetrics_checkbox
+        self.kwic_checkbox = self.setup_workspace.kwic_checkbox
+        self.btn_methodology = self.setup_workspace.btn_methodology
+        self.file_list = self.setup_workspace.file_list
+        self.terms_input = self.setup_workspace.terms_input
+        self.btn_process = self.setup_workspace.btn_process
+        self.btn_cancel = self.setup_workspace.btn_cancel
+        self.progress = self.setup_workspace.progress
 
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setStyleSheet("color: #ece6da; background: #ece6da; max-height: 1px;")
-        card_layout.addWidget(separator)
-
-        # Row 2 — which analyses to run + methodology shortcut
-        analyses_row = QHBoxLayout()
-        analyses_row.setSpacing(14)
-        analyses_label = QLabel("ANÁLISES:")
-        analyses_label.setStyleSheet(
-            "color: #b5670a; font-size: 9pt; font-weight: 700; letter-spacing: 1px;"
-        )
-        analyses_row.addWidget(analyses_label)
-        analyses_row.addWidget(self.sentiment_checkbox)
-        analyses_row.addWidget(self.emotions_checkbox)
-        analyses_row.addWidget(self.textmetrics_checkbox)
-        analyses_row.addWidget(self.kwic_checkbox)
-        analyses_row.addWidget(self.president_checkbox)
-        analyses_row.addStretch()
-        self.btn_methodology = QPushButton("📖  Metodologias")
-        self.btn_methodology.setToolTip(
-            "Explica cada análise: o que mede, como funciona e qual referência citar."
-        )
-        self.btn_methodology.clicked.connect(self.show_help)
-        analyses_row.addWidget(self.btn_methodology)
-        card_layout.addLayout(analyses_row)
-        main_layout.addWidget(options_card)
-
-        self.btn_add.clicked.connect(self.browse_files)
-        self.btn_clear.clicked.connect(self.clear_files)
-
-        # Splitter: files list + search terms
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setHandleWidth(14)
-
-        left_box = QWidget()
-        left_layout = QVBoxLayout(left_box)
-        left_layout.setContentsMargins(0, 0, 0, 0)
-        list_header = QLabel("Arquivos selecionados")
-        list_header.setObjectName("SectionHeader")
-        left_layout.addWidget(list_header)
-        self.file_list = QListWidget()
-        self.file_list.setMinimumHeight(140)
-        left_layout.addWidget(self.file_list)
-        splitter.addWidget(left_box)
-
-        right_box = QWidget()
-        right_layout = QVBoxLayout(right_box)
-        right_layout.setContentsMargins(0, 0, 0, 0)
-        search_row = QHBoxLayout()
-        search_header = QLabel("Termos de busca (opcional)")
-        search_header.setObjectName("SectionHeader")
-        search_row.addWidget(search_header)
-        search_row.addStretch()
-        btn_help_search = QPushButton("?")
-        btn_help_search.setFixedSize(28, 28)
-        btn_help_search.setToolTip("Como usar a busca de termos")
-        btn_help_search.clicked.connect(self.show_help)
-        search_row.addWidget(btn_help_search)
-        right_layout.addLayout(search_row)
-
-        self.terms_input = QPlainTextEdit()
-        self.terms_input.setPlaceholderText(
-            "Um termo por linha. Exemplos:\n\n"
-            "clima\n"
-            "desmatamento\n"
-            '"efeito estufa"           (aspas = busca exata)\n'
-            '"mudança do clima"\n'
-            'MITIGAÇÃO: clima, carbono, "efeito estufa"\n'
-            "                          (categoria: soma os termos)\n"
-            "# linhas começando com # são ignoradas"
-        )
-        # Input styling comes from the global stylesheet (styles.STYLE).
-        right_layout.addWidget(self.terms_input)
-        splitter.addWidget(right_box)
-        splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 2)
-
-        main_layout.addWidget(splitter, stretch=2)
-
-        action_row = QHBoxLayout()
-        self.btn_process = QPushButton("▶  Processar documentos")
-        self.btn_process.setObjectName("PrimaryButton")
-        self.btn_process.clicked.connect(self.start_processing)
-        self.btn_cancel = QPushButton("✖  Cancelar")
-        self.btn_cancel.setEnabled(False)
-        self.btn_cancel.clicked.connect(self.cancel_processing)
-        self.btn_export = QPushButton("⬇  Exportar")
-        self.btn_export.setEnabled(False)
-        self.btn_export.clicked.connect(self.export_results)
-        action_row.addWidget(self.btn_process)
-        action_row.addWidget(self.btn_cancel)
-        action_row.addStretch()
-        action_row.addWidget(self.btn_export)
-        main_layout.addLayout(action_row)
-
-        self.progress = QProgressBar()
-        self.progress.setVisible(False)
-        main_layout.addWidget(self.progress)
-
-        result_row = QHBoxLayout()
-        result_header = QLabel("Resultados")
-        result_header.setObjectName("SectionHeader")
-        result_row.addWidget(result_header)
-        result_hint = QLabel("duplo clique em uma linha abre os detalhes")
-        result_hint.setStyleSheet("color: #8a8475; font-size: 9pt; padding-top: 6px;")
-        result_row.addWidget(result_hint)
-        result_row.addStretch()
-        self.btn_details = QPushButton("🔍  Ver detalhes")
-        self.btn_details.setEnabled(False)
-        self.btn_details.clicked.connect(self.open_selected_details)
-        self.btn_charts = QPushButton("Gráficos")
-        self.btn_charts.setEnabled(False)
-        self.btn_charts.clicked.connect(self.open_charts)
-        result_row.addWidget(self.btn_charts)
-        result_row.addWidget(self.btn_details)
-        main_layout.addLayout(result_row)
-
-        self.results_table = QTableWidget(0, 8)
-        self._rebuild_results_table([])
-        self.results_table.setAlternatingRowColors(True)
+        self.btn_export = self.results_workspace.btn_export
+        self.btn_details = self.results_workspace.btn_details
+        self.btn_charts = self.results_workspace.btn_charts
+        self.results_table = self.results_workspace.results_table
         self.results_table.cellDoubleClicked.connect(self.open_result_details)
         self.results_table.itemSelectionChanged.connect(
             lambda: self.btn_details.setEnabled(
                 bool(self.results) and self.results_table.currentRow() >= 0
             )
         )
-        main_layout.addWidget(self.results_table, stretch=2)
+        self._rebuild_results_table([])
 
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
@@ -391,9 +177,7 @@ class MainWindow(QMainWindow):
 
     def open_charts(self):
         if self.results:
-            dlg = ChartDialog(self.results, self)
-            dlg.document_requested.connect(self.open_result_by_filename)
-            dlg.exec()
+            self.workspace_tabs.setCurrentIndex(2)
 
     def open_result_by_filename(self, filename: str):
         for row, result in enumerate(self.results):
@@ -509,10 +293,11 @@ class MainWindow(QMainWindow):
         for p in paths:
             if p not in self.pdf_files and p.lower().endswith(SUPPORTED_EXTENSIONS):
                 self.pdf_files.append(p)
-                item = QListWidgetItem(f"📄  {Path(p).name}")
+                item = QListWidgetItem(Path(p).name)
                 item.setToolTip(p)
                 self.file_list.addItem(item)
                 added += 1
+        self.setup_workspace.set_file_count(len(self.pdf_files))
         self.status_bar.showMessage(
             f"{added} arquivo(s) adicionado(s). Total: {len(self.pdf_files)}"
         )
@@ -522,8 +307,16 @@ class MainWindow(QMainWindow):
         self.file_list.clear()
         self.results.clear()
         self.results_table.setRowCount(0)
+        self.setup_workspace.set_file_count(0)
+        self.results_workspace.set_results_summary([])
+        self.charts_workspace.set_results([])
         self.btn_export.setEnabled(False)
         self.btn_charts.setEnabled(False)
+        self.btn_details.setEnabled(False)
+        self.workspace_tabs.setTabEnabled(1, False)
+        self.workspace_tabs.setTabEnabled(2, False)
+        self.workspace_tabs.setCurrentIndex(0)
+        self.app_header.context.setText("CORPUS OFFLINE")
         self.status_bar.showMessage("Lista limpa.")
 
     def start_processing(self):
@@ -544,6 +337,10 @@ class MainWindow(QMainWindow):
         self._rebuild_results_table(search_terms, categories)
 
         self.results.clear()
+        self.results_workspace.set_results_summary([])
+        self.charts_workspace.set_results([])
+        self.workspace_tabs.setTabEnabled(1, False)
+        self.workspace_tabs.setTabEnabled(2, False)
         self.btn_process.setEnabled(False)
         self.btn_cancel.setEnabled(True)
         self.btn_add.setEnabled(False)
@@ -553,6 +350,8 @@ class MainWindow(QMainWindow):
         self.progress.setVisible(True)
         self.progress.setRange(0, len(self.pdf_files) * 100)
         self.progress.setValue(0)
+        self.setup_workspace.processing_label.setText("Preparando análise...")
+        self.app_header.context.setText("PROCESSANDO")
 
         self.worker_thread = QThread()
         self.worker = ProcessingWorker(
@@ -619,8 +418,12 @@ class MainWindow(QMainWindow):
         if self.worker:
             self.worker.cancel()
         self.status_bar.showMessage("Cancelando...")
+        self.setup_workspace.processing_label.setText("Cancelando processamento...")
 
     def on_file_started(self, idx: int, filename: str):
+        self.setup_workspace.processing_label.setText(
+            f"{Path(filename).name} · {idx + 1}/{len(self.pdf_files)}"
+        )
         self.status_bar.showMessage(
             f"Processando {Path(filename).name} ({idx + 1}/{len(self.pdf_files)})..."
         )
@@ -633,6 +436,7 @@ class MainWindow(QMainWindow):
     def on_file_finished(self, idx: int, result: dict):
         self.results.append(result)
         self._add_result_row(idx + 1, result)
+        self.results_workspace.set_results_summary(self.results)
 
     def on_all_finished(self, results: List[dict]):
         self.worker_thread.quit()
@@ -644,11 +448,20 @@ class MainWindow(QMainWindow):
         self.btn_export.setEnabled(len(results) > 0)
         self.btn_charts.setEnabled(bool(results))
         self.progress.setVisible(False)
+        self.results_workspace.set_results_summary(results)
+        self.charts_workspace.set_results(results)
+        self.workspace_tabs.setTabEnabled(1, bool(results))
+        self.workspace_tabs.setTabEnabled(2, bool(results))
+        if results:
+            self.workspace_tabs.setCurrentIndex(1)
+        self.setup_workspace.processing_label.setText("Processamento concluído")
+        self.app_header.context.setText(f"{len(results)} DOCUMENTOS")
         self.status_bar.showMessage(
             f"Concluído. {len(results)} arquivo(s) processado(s)."
         )
 
     def on_error(self, idx: int, path: str, error_msg: str):
+        self.setup_workspace.processing_label.setText("Falha no processamento")
         QMessageBox.critical(
             self, "Erro no processamento", f"{Path(path).name}:\n\n{error_msg}"
         )

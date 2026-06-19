@@ -16,7 +16,8 @@ from src.core.chart_data import (
     build_territory_chart,
 )
 from src.gui.charts.chart_canvas import ChartCanvas
-from src.gui.charts.chart_dialog import ChartDialog
+from src.gui.charts.chart_dialog import ChartDialog, ChartWorkspace
+from src.gui.main_window import MainWindow
 
 pytestmark = pytest.mark.unit
 
@@ -90,18 +91,19 @@ def test_canvas_renders_all_visual_modes(app, results):
 
 def test_dialog_switches_between_six_chart_types(app, results):
     dialog = ChartDialog(results)
-    assert dialog.chart_type.count() == 6
-    assert dialog.normalize.isEnabled()
+    workspace = dialog.workspace
+    assert workspace.chart_type.count() == 6
+    assert workspace.normalize.isEnabled()
     expected = ["line", "bar", "stacked", "scatter", "heatmap", "bar"]
     for index, kind in enumerate(expected):
-        dialog.chart_type.setCurrentIndex(index)
+        workspace.chart_type.setCurrentIndex(index)
         app.processEvents()
-        assert dialog.canvas.data.kind == kind
-    dialog.chart_type.setCurrentIndex(1)
-    dialog.comparison_kind.setCurrentIndex(0)
-    assert not dialog.normalize.isEnabled()
-    dialog.comparison_kind.setCurrentIndex(1)
-    assert dialog.normalize.isEnabled()
+        assert workspace.canvas.data.kind == kind
+    workspace.chart_type.setCurrentIndex(1)
+    workspace.comparison_kind.setCurrentIndex(0)
+    assert not workspace.normalize.isEnabled()
+    workspace.comparison_kind.setCurrentIndex(1)
+    assert workspace.normalize.isEnabled()
     dialog.close()
 
 
@@ -113,3 +115,37 @@ def test_hidden_legend_series_are_excluded_from_visible_data(app, results):
         "Positivo",
         "Negativo",
     ]
+
+
+def test_embedded_workspace_can_replace_results(app, results):
+    workspace = ChartWorkspace([])
+    workspace.set_results(results)
+    assert workspace.document_filter.count() == 3
+    assert workspace.canvas.data.kind == "line"
+
+
+def test_workspace_hides_legend_controls_for_single_series(app, results):
+    workspace = ChartWorkspace(results)
+    assert workspace.legend.isHidden()
+    assert workspace.legend_label.isHidden()
+
+    workspace.chart_type.setCurrentIndex(2)
+    app.processEvents()
+    assert not workspace.legend.isHidden()
+    assert not workspace.legend_label.isHidden()
+
+
+def test_main_window_uses_three_distinct_workspaces(app):
+    window = MainWindow()
+    assert window.workspace_tabs.count() == 3
+    assert [window.workspace_tabs.tabText(index) for index in range(3)] == [
+        "Corpus",
+        "Resultados",
+        "Gráficos",
+    ]
+    assert window.app_header.objectName() == "AppHeader"
+    assert not window.workspace_tabs.isTabEnabled(1)
+    assert not window.workspace_tabs.isTabEnabled(2)
+    assert window.file_list is window.setup_workspace.file_list
+    assert window.results_table is window.results_workspace.results_table
+    window.close()

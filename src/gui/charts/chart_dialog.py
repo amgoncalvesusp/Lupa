@@ -36,15 +36,12 @@ from src.core.chart_data import (
 from .chart_canvas import ChartCanvas
 
 
-class ChartDialog(QDialog):
+class ChartWorkspace(QWidget):
     document_requested = pyqtSignal(str)
 
     def __init__(self, results: List[Dict], parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Gráficos interativos - Lupa")
-        self.resize(1240, 780)
-        self.setMinimumSize(980, 640)
-        self.setStyleSheet("QDialog { background-color: #f4f1ea; }")
+        self.setMinimumSize(760, 540)
         self.results = list(results)
         self.options = chart_options(self.results)
         self._updating = False
@@ -72,12 +69,32 @@ class ChartDialog(QDialog):
         copy.clicked.connect(self._copy_data)
         export = QPushButton("Exportar PNG")
         export.clicked.connect(self._export_png)
-        close = QPushButton("Fechar")
-        close.clicked.connect(self.accept)
-        for button in (reset, copy, export, close):
+        for button in (reset, copy, export):
             bottom.addWidget(button)
         layout.addLayout(bottom)
         self._refresh_chart()
+
+    def set_results(self, results: List[Dict]) -> None:
+        """Replace the corpus displayed by an embedded chart workspace."""
+        self.results = list(results)
+        self.options = chart_options(self.results)
+        self._updating = True
+        self.year_filter.clear()
+        self.year_filter.addItem("Todos os anos", "")
+        for year in self.options["years"]:
+            self.year_filter.addItem(year, year)
+        self.document_filter.clear()
+        self.document_filter.addItem("Todos os documentos", "")
+        for filename in self.options["filenames"]:
+            self.document_filter.addItem(filename, filename)
+        self.temporal_metrics.clear()
+        self._populate_temporal_metrics()
+        self.territory_type.clear()
+        self.territory_type.addItem("Todos os tipos", "")
+        for item_type in self.options["territory_types"]:
+            self.territory_type.addItem(item_type, item_type)
+        self._updating = False
+        self._comparison_kind_changed()
 
     def _build_controls(self) -> QWidget:
         panel = QWidget()
@@ -171,7 +188,8 @@ class ChartDialog(QDialog):
         territory_layout.addWidget(self.territory_type)
         layout.addWidget(self.territory_group)
 
-        layout.addWidget(self._label("LEGENDA"))
+        self.legend_label = self._label("LEGENDA")
+        layout.addWidget(self.legend_label)
         self.legend = QListWidget()
         self.legend.setFixedHeight(112)
         self.legend.itemChanged.connect(self._legend_changed)
@@ -288,7 +306,9 @@ class ChartDialog(QDialog):
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
             item.setCheckState(Qt.CheckState.Checked)
             self.legend.addItem(item)
-        self.legend.setVisible(len(data.series) > 1)
+        show_legend = len(data.series) > 1
+        self.legend_label.setVisible(show_legend)
+        self.legend.setVisible(show_legend)
         self._updating = False
 
     def _legend_changed(self):
@@ -343,3 +363,25 @@ class ChartDialog(QDialog):
             "color: #b5670a; font-size: 8pt; font-weight: 700; padding-top: 5px;"
         )
         return label
+
+
+class ChartDialog(QDialog):
+    document_requested = pyqtSignal(str)
+
+    def __init__(self, results: List[Dict], parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Gráficos interativos - Lupa")
+        self.resize(1240, 780)
+        self.setMinimumSize(980, 640)
+        self.setStyleSheet("QDialog { background-color: #f4f1ea; }")
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 12)
+        self.workspace = ChartWorkspace(results, self)
+        self.workspace.document_requested.connect(self.document_requested.emit)
+        layout.addWidget(self.workspace, stretch=1)
+        button_row = QHBoxLayout()
+        button_row.addStretch()
+        close = QPushButton("Fechar")
+        close.clicked.connect(self.accept)
+        button_row.addWidget(close)
+        layout.addLayout(button_row)
