@@ -28,6 +28,8 @@ SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequiredOverridesAllowed=dialog
 LicenseFile=..\LICENSE
+SetupIconFile=..\src\gui\assets\lupa-icon.ico
+UninstallDisplayIcon={app}\{#AppExeName}
 ArchitecturesInstallIn64BitMode=x64compatible
 
 [Languages]

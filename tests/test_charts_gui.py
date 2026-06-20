@@ -135,17 +135,34 @@ def test_workspace_hides_legend_controls_for_single_series(app, results):
     assert not workspace.legend_label.isHidden()
 
 
-def test_main_window_uses_three_distinct_workspaces(app):
+def test_main_window_uses_sidebar_workbench(app):
     window = MainWindow()
-    assert window.workspace_tabs.count() == 3
-    assert [window.workspace_tabs.tabText(index) for index in range(3)] == [
+    assert window.workspace_stack.count() == 3
+    assert [button.text() for button in window.navigation.buttons] == [
         "Corpus",
         "Resultados",
-        "Gráficos",
+        "Exploração",
     ]
-    assert window.app_header.objectName() == "AppHeader"
-    assert not window.workspace_tabs.isTabEnabled(1)
-    assert not window.workspace_tabs.isTabEnabled(2)
+    assert window.navigation.objectName() == "NavigationSidebar"
+    assert window.workspace_header.objectName() == "WorkspaceHeader"
+    assert window.navigation.buttons[0].isChecked()
+    assert not window.navigation.buttons[1].isEnabled()
+    assert not window.navigation.buttons[2].isEnabled()
+    assert not window.windowIcon().isNull()
     assert window.file_list is window.setup_workspace.file_list
     assert window.results_table is window.results_workspace.results_table
+    window.close()
+
+
+def test_sidebar_navigation_updates_workspace_and_header(app):
+    window = MainWindow()
+    window.set_results_navigation_enabled(True)
+
+    window.navigation.buttons[1].click()
+    assert window.workspace_stack.currentIndex() == 1
+    assert window.workspace_header.title.text() == "Resultados"
+
+    window.navigation.buttons[2].click()
+    assert window.workspace_stack.currentIndex() == 2
+    assert window.workspace_header.title.text() == "Exploração visual"
     window.close()

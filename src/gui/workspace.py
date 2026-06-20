@@ -1,9 +1,9 @@
-"""Workspace components for the tabbed Lupa desktop interface."""
+"""Workspace components for the Lupa research workbench."""
 
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QDragEnterEvent, QDropEvent
+from PyQt6.QtCore import QSize, Qt, pyqtSignal
+from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPixmap
 from PyQt6.QtWidgets import (
     QCheckBox,
     QFrame,
@@ -21,6 +21,8 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from src.gui.resources import asset_path
 
 SUPPORTED_EXTENSIONS = (".pdf", ".docx", ".txt")
 
@@ -76,40 +78,123 @@ class DropZone(QFrame):
         self.style().polish(self)
 
 
-class ApplicationHeader(QFrame):
+class NavigationSidebar(QFrame):
+    page_requested = pyqtSignal(int)
     help_requested = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setObjectName("AppHeader")
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(20, 10, 20, 10)
-        layout.setSpacing(16)
+        self.setObjectName("NavigationSidebar")
+        self.setFixedWidth(214)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 24, 0, 18)
+        layout.setSpacing(8)
+
+        logo = QLabel()
+        logo.setObjectName("SidebarLogo")
+        logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        pixmap = QPixmap(str(asset_path("lupa-icon.png")))
+        logo.setPixmap(
+            pixmap.scaled(
+                86,
+                86,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        )
+        layout.addWidget(logo)
 
         brand = QLabel("Lupa")
-        brand.setObjectName("AppBrand")
+        brand.setObjectName("SidebarBrand")
+        brand.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(brand)
 
-        separator = QFrame()
-        separator.setObjectName("HeaderSeparator")
-        separator.setFrameShape(QFrame.Shape.VLine)
-        layout.addWidget(separator)
+        descriptor = QLabel("ANÁLISE DOCUMENTAL")
+        descriptor.setObjectName("SidebarDescriptor")
+        descriptor.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(descriptor)
+        layout.addSpacing(22)
 
-        subtitle = QLabel("Análise documental auditável")
-        subtitle.setObjectName("AppSubtitle")
-        layout.addWidget(subtitle)
+        navigation_items = (
+            ("Corpus", QStyle.StandardPixmap.SP_DirIcon),
+            ("Resultados", QStyle.StandardPixmap.SP_FileDialogDetailedView),
+            ("Exploração", QStyle.StandardPixmap.SP_ComputerIcon),
+        )
+        self.buttons = []
+        for index, (label, icon_type) in enumerate(navigation_items):
+            button = QPushButton(label)
+            button.setObjectName("NavigationButton")
+            button.setCheckable(True)
+            button.setAutoExclusive(True)
+            button.setIcon(self.style().standardIcon(icon_type))
+            button.setIconSize(QSize(20, 20))
+            button.clicked.connect(
+                lambda _checked=False, page=index: self.page_requested.emit(page)
+            )
+            self.buttons.append(button)
+            layout.addWidget(button)
+        self.buttons[0].setChecked(True)
+        layout.addStretch()
+
+        help_button = QPushButton("Ajuda e métodos")
+        help_button.setObjectName("SidebarHelpButton")
+        help_button.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_DialogHelpButton)
+        )
+        help_button.clicked.connect(self.help_requested)
+        layout.addWidget(help_button)
+
+    def set_page_enabled(self, index: int, enabled: bool) -> None:
+        self.buttons[index].setEnabled(enabled)
+
+    def set_current_index(self, index: int) -> None:
+        self.buttons[index].setChecked(True)
+
+
+class WorkspaceHeader(QFrame):
+    help_requested = pyqtSignal()
+
+    PAGES = (
+        ("Corpus", "Prepare documentos e parâmetros para a análise."),
+        ("Resultados", "Revise o corpus processado e abra a trilha de auditoria."),
+        ("Exploração visual", "Compare documentos, períodos e indicadores."),
+    )
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("WorkspaceHeader")
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(24, 14, 20, 12)
+        layout.setSpacing(14)
+
+        title_group = QVBoxLayout()
+        title_group.setSpacing(1)
+        self.title = QLabel()
+        self.title.setObjectName("WorkspacePageTitle")
+        self.description = QLabel()
+        self.description.setObjectName("WorkspacePageDescription")
+        title_group.addWidget(self.title)
+        title_group.addWidget(self.description)
+        layout.addLayout(title_group)
         layout.addStretch()
 
         self.context = QLabel("CORPUS OFFLINE")
-        self.context.setObjectName("HeaderContext")
+        self.context.setObjectName("WorkspaceContext")
         layout.addWidget(self.context)
-
         help_button = QPushButton()
         help_button.setObjectName("HeaderIconButton")
-        help_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogHelpButton))
+        help_button.setIcon(
+            self.style().standardIcon(QStyle.StandardPixmap.SP_DialogHelpButton)
+        )
         help_button.setToolTip("Abrir ajuda")
         help_button.clicked.connect(self.help_requested)
         layout.addWidget(help_button)
+        self.set_page(0)
+
+    def set_page(self, index: int) -> None:
+        title, description = self.PAGES[index]
+        self.title.setText(title)
+        self.description.setText(description)
 
 
 class SetupWorkspace(QWidget):
@@ -128,22 +213,24 @@ class SetupWorkspace(QWidget):
         root.setSpacing(12)
 
         columns = QHBoxLayout()
-        columns.setSpacing(12)
+        columns.setSpacing(0)
         columns.addWidget(self._build_corpus_panel(), stretch=3)
-        columns.addWidget(self._build_analysis_panel(), stretch=2)
+        analysis_panel = self._build_analysis_panel()
+        analysis_panel.setMaximumWidth(430)
+        columns.addWidget(analysis_panel, stretch=2)
         root.addLayout(columns, stretch=1)
         root.addWidget(self._build_action_bar())
 
     def _build_corpus_panel(self) -> QFrame:
         panel = QFrame()
-        panel.setObjectName("WorkspacePanel")
+        panel.setObjectName("DocumentCanvas")
         panel.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(16, 14, 16, 16)
         layout.setSpacing(10)
 
         header = QHBoxLayout()
-        title = QLabel("Corpus documental")
+        title = QLabel("Documentos")
         title.setObjectName("WorkspaceTitle")
         header.addWidget(title)
         self.file_count = QLabel("0 documentos")
@@ -151,7 +238,8 @@ class SetupWorkspace(QWidget):
         header.addWidget(self.file_count)
         header.addStretch()
 
-        self.btn_add = QPushButton("Adicionar")
+        self.btn_add = QPushButton("Adicionar arquivos")
+        self.btn_add.setObjectName("PrimaryButton")
         self.btn_add.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogOpenButton))
         self.btn_add.clicked.connect(self.add_requested)
         header.addWidget(self.btn_add)
@@ -174,7 +262,7 @@ class SetupWorkspace(QWidget):
 
     def _build_analysis_panel(self) -> QFrame:
         panel = QFrame()
-        panel.setObjectName("WorkspacePanel")
+        panel.setObjectName("AnalysisInspector")
         panel.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(16, 14, 16, 16)
@@ -185,7 +273,7 @@ class SetupWorkspace(QWidget):
         title.setObjectName("WorkspaceTitle")
         header.addWidget(title)
         header.addStretch()
-        self.btn_methodology = QPushButton("Metodologias")
+        self.btn_methodology = QPushButton("Métodos")
         self.btn_methodology.clicked.connect(self.methodology_requested)
         header.addWidget(self.btn_methodology)
         layout.addLayout(header)

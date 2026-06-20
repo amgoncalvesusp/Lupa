@@ -12,13 +12,14 @@ hiddenimports += ['src.core.analysis.vendor.leia.leia']
 
 
 a = Analysis(
-    ['C:\\Users\\adria\\OneDrive\\Documents\\Projetos IA\\Lupa\\src\\main.py'],
+    ['src/main.py'],
     pathex=[],
     binaries=[],
     datas=[
         ('C:\\Program Files\\Tesseract-OCR', 'tesseract'),
         ('src/core/analysis/vendor/leia/lexicons', 'src/core/analysis/vendor/leia/lexicons'),
         ('src/core/data', 'src/core/data'),
+        ('src/gui/assets', 'src/gui/assets'),
     ],
     hiddenimports=hiddenimports,
     hookspath=[],
@@ -49,4 +50,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='src/gui/assets/lupa-icon.ico',
 )

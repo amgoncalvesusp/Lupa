@@ -4,16 +4,18 @@ from pathlib import Path
 from typing import List
 
 from PyQt6.QtCore import Qt, QThread
-from PyQt6.QtGui import QAction, QColor
+from PyQt6.QtGui import QAction, QColor, QIcon
 from PyQt6.QtWidgets import (
     QFileDialog,
+    QFrame,
     QHeaderView,
+    QHBoxLayout,
     QListWidgetItem,
     QMainWindow,
     QMessageBox,
     QStatusBar,
+    QStackedWidget,
     QTableWidgetItem,
-    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -23,11 +25,13 @@ from src.gui.workers import ProcessingWorker
 from src.gui.help_dialog import HelpDialog
 from src.gui.detail_dialog import ResultDetailDialog
 from src.gui.charts import ChartWorkspace
+from src.gui.resources import asset_path
 from src.gui.workspace import (
-    ApplicationHeader,
+    NavigationSidebar,
     ResultsWorkspace,
     SetupWorkspace,
     SUPPORTED_EXTENSIONS,
+    WorkspaceHeader,
 )
 from src.core.analysis import build_column_specs, build_default_analyzers
 from src.core.exporter import export_to_xlsx
@@ -40,6 +44,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Lupa — Análise Textual de Documentos")
+        self.setWindowIcon(QIcon(str(asset_path("lupa-icon.png"))))
         self.resize(1280, 860)
         self.setStyleSheet(STYLE)
 
@@ -98,27 +103,38 @@ class MainWindow(QMainWindow):
     def _build_ui(self):
         central = QWidget()
         self.setCentralWidget(central)
-        layout = QVBoxLayout(central)
+        layout = QHBoxLayout(central)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        self.app_header = ApplicationHeader()
-        self.app_header.help_requested.connect(self.show_help)
-        layout.addWidget(self.app_header)
+        self.navigation = NavigationSidebar()
+        self.navigation.page_requested.connect(self.show_workspace)
+        self.navigation.help_requested.connect(self.show_help)
+        layout.addWidget(self.navigation)
 
-        self.workspace_tabs = QTabWidget()
-        self.workspace_tabs.setObjectName("WorkspaceTabs")
+        content = QFrame()
+        content.setObjectName("WorkbenchContent")
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+        layout.addWidget(content, stretch=1)
+
+        self.workspace_header = WorkspaceHeader()
+        self.workspace_header.help_requested.connect(self.show_help)
+        content_layout.addWidget(self.workspace_header)
+
+        self.workspace_stack = QStackedWidget()
+        self.workspace_stack.setObjectName("WorkspaceStack")
         self.setup_workspace = SetupWorkspace()
         self.results_workspace = ResultsWorkspace()
         self.charts_workspace = ChartWorkspace([])
         self.charts_workspace.document_requested.connect(self.open_result_by_filename)
 
-        self.workspace_tabs.addTab(self.setup_workspace, "Corpus")
-        self.workspace_tabs.addTab(self.results_workspace, "Resultados")
-        self.workspace_tabs.addTab(self.charts_workspace, "Gráficos")
-        self.workspace_tabs.setTabEnabled(1, False)
-        self.workspace_tabs.setTabEnabled(2, False)
-        layout.addWidget(self.workspace_tabs, stretch=1)
+        self.workspace_stack.addWidget(self.setup_workspace)
+        self.workspace_stack.addWidget(self.results_workspace)
+        self.workspace_stack.addWidget(self.charts_workspace)
+        self.set_results_navigation_enabled(False)
+        content_layout.addWidget(self.workspace_stack, stretch=1)
 
         self.setup_workspace.add_requested.connect(self.browse_files)
         self.setup_workspace.clear_requested.connect(self.clear_files)
@@ -177,7 +193,18 @@ class MainWindow(QMainWindow):
 
     def open_charts(self):
         if self.results:
-            self.workspace_tabs.setCurrentIndex(2)
+            self.show_workspace(2)
+
+    def show_workspace(self, index: int) -> None:
+        if not self.navigation.buttons[index].isEnabled():
+            return
+        self.workspace_stack.setCurrentIndex(index)
+        self.navigation.set_current_index(index)
+        self.workspace_header.set_page(index)
+
+    def set_results_navigation_enabled(self, enabled: bool) -> None:
+        self.navigation.set_page_enabled(1, enabled)
+        self.navigation.set_page_enabled(2, enabled)
 
     def open_result_by_filename(self, filename: str):
         for row, result in enumerate(self.results):
@@ -313,10 +340,9 @@ class MainWindow(QMainWindow):
         self.btn_export.setEnabled(False)
         self.btn_charts.setEnabled(False)
         self.btn_details.setEnabled(False)
-        self.workspace_tabs.setTabEnabled(1, False)
-        self.workspace_tabs.setTabEnabled(2, False)
-        self.workspace_tabs.setCurrentIndex(0)
-        self.app_header.context.setText("CORPUS OFFLINE")
+        self.set_results_navigation_enabled(False)
+        self.show_workspace(0)
+        self.workspace_header.context.setText("CORPUS OFFLINE")
         self.status_bar.showMessage("Lista limpa.")
 
     def start_processing(self):
@@ -339,8 +365,7 @@ class MainWindow(QMainWindow):
         self.results.clear()
         self.results_workspace.set_results_summary([])
         self.charts_workspace.set_results([])
-        self.workspace_tabs.setTabEnabled(1, False)
-        self.workspace_tabs.setTabEnabled(2, False)
+        self.set_results_navigation_enabled(False)
         self.btn_process.setEnabled(False)
         self.btn_cancel.setEnabled(True)
         self.btn_add.setEnabled(False)
@@ -351,7 +376,7 @@ class MainWindow(QMainWindow):
         self.progress.setRange(0, len(self.pdf_files) * 100)
         self.progress.setValue(0)
         self.setup_workspace.processing_label.setText("Preparando análise...")
-        self.app_header.context.setText("PROCESSANDO")
+        self.workspace_header.context.setText("PROCESSANDO")
 
         self.worker_thread = QThread()
         self.worker = ProcessingWorker(
@@ -450,12 +475,11 @@ class MainWindow(QMainWindow):
         self.progress.setVisible(False)
         self.results_workspace.set_results_summary(results)
         self.charts_workspace.set_results(results)
-        self.workspace_tabs.setTabEnabled(1, bool(results))
-        self.workspace_tabs.setTabEnabled(2, bool(results))
+        self.set_results_navigation_enabled(bool(results))
         if results:
-            self.workspace_tabs.setCurrentIndex(1)
+            self.show_workspace(1)
         self.setup_workspace.processing_label.setText("Processamento concluído")
-        self.app_header.context.setText(f"{len(results)} DOCUMENTOS")
+        self.workspace_header.context.setText(f"{len(results)} DOCUMENTOS")
         self.status_bar.showMessage(
             f"Concluído. {len(results)} arquivo(s) processado(s)."
         )

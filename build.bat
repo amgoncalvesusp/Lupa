@@ -59,6 +59,7 @@ if exist "%TESS_DIR%\tesseract.exe" (
         --onefile ^
         --windowed ^
         --name "Lupa" ^
+        --icon "src\gui\assets\lupa-icon.ico" ^
         --add-data "%TESS_DIR%;tesseract" ^
         --hidden-import PyQt6.QtCore ^
         --hidden-import PyQt6.QtGui ^
@@ -71,6 +72,7 @@ if exist "%TESS_DIR%\tesseract.exe" (
         --hidden-import src.core.analysis.vendor.leia.leia ^
         --collect-data src.core.analysis.vendor.leia ^
         --add-data "src\core\data;src\core\data" ^
+        --add-data "src\gui\assets;src\gui\assets" ^
         %PYQT_EXCLUDES% ^
         src\main.py
 ) else (
@@ -80,6 +82,7 @@ if exist "%TESS_DIR%\tesseract.exe" (
         --onefile ^
         --windowed ^
         --name "Lupa" ^
+        --icon "src\gui\assets\lupa-icon.ico" ^
         --hidden-import PyQt6.QtCore ^
         --hidden-import PyQt6.QtGui ^
         --hidden-import PyQt6.QtWidgets ^
@@ -91,6 +94,7 @@ if exist "%TESS_DIR%\tesseract.exe" (
         --hidden-import src.core.analysis.vendor.leia.leia ^
         --collect-data src.core.analysis.vendor.leia ^
         --add-data "src\core\data;src\core\data" ^
+        --add-data "src\gui\assets;src\gui\assets" ^
         %PYQT_EXCLUDES% ^
         src\main.py
 )

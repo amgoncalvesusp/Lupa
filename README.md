@@ -96,11 +96,11 @@ O software detecta o Tesseract na inicialização e habilita/desabilita a opçã
 
 ### Fluxo básico
 
-1. Na aba **Corpus**, arraste documentos para a área pontilhada ou clique em **Adicionar**. Pastas também são aceitas (PDF, DOCX e TXT são incluídos).
+1. Em **Corpus**, arraste documentos para a área pontilhada ou clique em **Adicionar arquivos**. Pastas também são aceitas (PDF, DOCX e TXT são incluídos).
 2. No painel **Configuração da análise**, informe termos/categorias e selecione os módulos desejados.
 3. Ative o OCR apenas quando houver PDFs escaneados e clique em **Processar corpus**.
-4. A aba **Resultados** é aberta ao final com o resumo do lote, a tabela auditável, detalhes e exportação.
-5. Use a aba **Gráficos** para explorar comparações, filtros e séries sem sair da janela principal.
+4. A área **Resultados** é aberta ao final com o resumo do lote, a tabela auditável, detalhes e exportação.
+5. Use **Exploração** na barra lateral para comparar documentos, filtros e séries sem sair da janela principal.
 
 ### Sintaxe da busca de termos
 
@@ -240,12 +240,12 @@ aparece na coluna "Menções territoriais" e na aba **"Menções Territoriais"**
 Quando o lote possui dois ou mais anos distintos, o XLSX inclui a aba
 **"Síntese por Ano"**: número de documentos, palavras do corpus, médias
 descritivas de sentimento/legibilidade e contagens por termo/categoria. A
-janela principal habilita as abas **Resultados** e **Gráficos** após o
+janela principal habilita as áreas **Resultados** e **Exploração** após o
 processamento.
 
 ### Gráficos interativos
 
-A aba **Gráficos** oferece uma central visual baseada em `QPainter`, sem
+A área **Exploração** oferece uma central visual baseada em `QPainter`, sem
 dependências pesadas e totalmente offline. Estão disponíveis:
 
 - **Série temporal:** combina volume, sentimento, legibilidade, termos e categorias por ano.

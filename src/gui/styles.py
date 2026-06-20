@@ -287,38 +287,92 @@ QSplitter::handle {
     background: transparent;
 }
 
-/* ---- Tabbed research workspace ---- */
-QFrame#AppHeader {
+/* ---- Lupa workbench shell ---- */
+QFrame#NavigationSidebar {
+    background-color: #063f3a;
+    border: none;
+}
+QFrame#NavigationSidebar QLabel,
+QFrame#NavigationSidebar QPushButton {
+    background-color: transparent;
+}
+QLabel#SidebarLogo {
+    min-height: 92px;
+}
+QLabel#SidebarBrand {
+    color: #ffffff;
+    font-family: "Georgia", "Cambria", serif;
+    font-size: 25pt;
+    font-weight: 600;
+}
+QLabel#SidebarDescriptor {
+    color: #9fc7c1;
+    font-size: 7pt;
+    font-weight: 700;
+}
+QPushButton#NavigationButton {
+    color: #d8e7e3;
+    border: none;
+    border-left: 4px solid transparent;
+    border-radius: 0;
+    padding: 14px 18px;
+    min-height: 26px;
+    text-align: left;
+    font-size: 10pt;
+}
+QPushButton#NavigationButton:hover:!checked {
+    background-color: #0b4b45;
+    color: #ffffff;
+}
+QPushButton#NavigationButton:checked {
+    background-color: #145c54;
+    color: #f0bf3a;
+    border-left: 4px solid #f0bf3a;
+}
+QPushButton#NavigationButton:disabled {
+    color: #658b86;
+    border-left-color: transparent;
+}
+QPushButton#SidebarHelpButton {
+    color: #d8e7e3;
+    border: 1px solid #2f6c66;
+    border-radius: 4px;
+    margin: 0 16px;
+    padding: 9px 12px;
+}
+QPushButton#SidebarHelpButton:hover {
+    background-color: #145c54;
+    color: #ffffff;
+}
+QFrame#WorkbenchContent,
+QStackedWidget#WorkspaceStack {
+    background-color: #f4f1ea;
+    border: none;
+}
+QFrame#WorkspaceHeader {
     background-color: #ffffff;
     border: none;
-    border-bottom: 3px solid #0f766e;
-    min-height: 52px;
-    max-height: 52px;
+    border-bottom: 1px solid #ddd5c6;
+    min-height: 68px;
+    max-height: 68px;
 }
-QLabel#AppBrand {
+QLabel#WorkspacePageTitle {
     background: transparent;
     color: #103d3a;
     font-family: "Georgia", "Cambria", serif;
-    font-size: 22pt;
+    font-size: 19pt;
     font-weight: 600;
 }
-QLabel#AppSubtitle {
+QLabel#WorkspacePageDescription {
     background: transparent;
-    color: #5c6670;
-    font-size: 10pt;
+    color: #6b7280;
+    font-size: 9pt;
 }
-QLabel#HeaderContext {
+QLabel#WorkspaceContext {
     background: transparent;
     color: #b5670a;
     font-size: 8pt;
     font-weight: 700;
-}
-QFrame#HeaderSeparator {
-    color: #ddd5c6;
-    background-color: #ddd5c6;
-    min-width: 1px;
-    max-width: 1px;
-    min-height: 28px;
 }
 QPushButton#HeaderIconButton,
 QPushButton#InlineIconButton,
@@ -334,37 +388,15 @@ QPushButton#DangerIconButton {
     color: #b4413c;
     border-color: #e2b6b1;
 }
-QTabWidget#WorkspaceTabs::pane {
-    background-color: #f4f1ea;
-    border: none;
-    top: -1px;
-}
-QTabWidget#WorkspaceTabs QTabBar::tab {
-    background-color: #ffffff;
-    color: #5c6670;
-    min-width: 150px;
-    padding: 12px 22px 10px 22px;
-    border: none;
-    border-bottom: 3px solid #e4ddcf;
-    font-size: 10pt;
-    font-weight: 600;
-}
-QTabWidget#WorkspaceTabs QTabBar::tab:selected {
-    color: #0f766e;
-    border-bottom: 3px solid #0f766e;
-}
-QTabWidget#WorkspaceTabs QTabBar::tab:hover:!selected {
-    color: #103d3a;
-    background-color: #eef6f4;
-}
-QTabWidget#WorkspaceTabs QTabBar::tab:disabled {
-    color: #b4ae9f;
-    background-color: #faf7f0;
-}
-QFrame#WorkspacePanel {
+QFrame#DocumentCanvas,
+QFrame#AnalysisInspector {
     background-color: #ffffff;
     border: 1px solid #ddd5c6;
-    border-radius: 6px;
+    border-radius: 0;
+}
+QFrame#AnalysisInspector {
+    background-color: #faf7f0;
+    border-left: none;
 }
 QLabel#WorkspaceTitle {
     background: transparent;
