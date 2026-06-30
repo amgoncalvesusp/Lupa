@@ -4,6 +4,7 @@
 
 > English documentation is available in [README.en.md](README.en.md). The application interface can be switched between Portuguese and English from the language button in the header.
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21053241.svg)](https://doi.org/10.5281/zenodo.21053241)
 ![Language](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)
 ![GUI](https://img.shields.io/badge/GUI-PyQt6-brightgreen)
@@ -410,6 +411,6 @@ MIT — see the [LICENSE](LICENSE) file for details.
 
 If you use this software in your research, please cite it as follows:
 
-> GONÇALVES, A. M.; ANGELI, T. *Lupa: tool for content analysis and textual metrics of document corpora in PDF*. Araraquara: UNIARA, 2026.
+> GONÇALVES, A. M.; ANGELI, T. *Lupa: tool for content analysis and textual metrics of document corpora in PDF*. Araraquara: UNIARA, 2026. DOI: [10.5281/zenodo.21053241](https://doi.org/10.5281/zenodo.21053241).
 
-> Lupa is derived from *WordCounter*. A dedicated DOI will be assigned in a future publication.
+> Lupa is derived from *WordCounter*.

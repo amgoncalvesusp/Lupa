@@ -4,6 +4,7 @@
 
 > English documentation is available in [README.en.md](README.en.md). The application interface can be switched between Portuguese and English from the language button in the header.
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21053241.svg)](https://doi.org/10.5281/zenodo.21053241)
 ![Linguagem](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows-lightgrey)
 ![GUI](https://img.shields.io/badge/GUI-PyQt6-brightgreen)
@@ -322,7 +323,7 @@ qualitativa interpretativa, ao contrário de modelos de "caixa-preta".
   (Positivo `compound ≥ 0,05`; Negativo `≤ -0,05`; Neutro caso contrário). Por
   documento, são reportados a classe geral, o composto médio e o percentual de
   sentenças positivas/negativas/neutras.
-- **Saída para análise qualitativa:** o XLSX inclui a aba **"Sentimento
+- **Saída para análise qualitativa:** the XLSX inclui a aba **"Sentimento
   (Sentenças)"** com cada sentença, página, escore e classe. Esse detalhamento
   fornece as **unidades de registro** da Análise de Conteúdo (Bardin) e os
   **pré-indicadores afetivos** dos Núcleos de Significação (Aguiar & Ozella),
@@ -476,6 +477,6 @@ MIT — consulte o arquivo [LICENSE](LICENSE) para detalhes.
 
 Caso utilize este software em sua pesquisa, sugere-se a seguinte citação:
 
-> GONÇALVES, A. M.; ANGELI, T. *Lupa: ferramenta para análise de conteúdo e métricas textuais de corpora documentais em PDF*. Araraquara: UNIARA, 2026.
+> GONÇALVES, A. M.; ANGELI, T. *Lupa: ferramenta para análise de conteúdo e métricas textuais de corpora documentais em PDF*. Araraquara: UNIARA, 2026. DOI: [10.5281/zenodo.21053241](https://doi.org/10.5281/zenodo.21053241).
 
-> Lupa deriva do *Contador de Palavras*. Um DOI próprio será atribuído em publicação futura.
+> Lupa deriva do *Contador de Palavras*.
