@@ -6,6 +6,7 @@ from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent, QPixmap
 from PyQt6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -18,11 +19,14 @@ from PyQt6.QtWidgets import (
     QStackedWidget,
     QStyle,
     QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
 from src.gui.resources import asset_path
+from src.gui import i18n
 
 SUPPORTED_EXTENSIONS = (".pdf", ".docx", ".txt")
 
@@ -39,6 +43,7 @@ class DropZone(QFrame):
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setObjectName("DropZoneLabel")
         layout.addWidget(self.label)
+        self.language = i18n.DEFAULT_LANGUAGE
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if not event.mimeData().hasUrls():
@@ -77,6 +82,14 @@ class DropZone(QFrame):
         self.style().unpolish(self)
         self.style().polish(self)
 
+    def set_language(self, language: str) -> None:
+        self.language = i18n.normalize_language(language)
+        self.label.setText(
+            "Drop PDF, DOCX or TXT documents"
+            if self.language == "en"
+            else "Solte documentos PDF, DOCX ou TXT"
+        )
+
 
 class NavigationSidebar(QFrame):
     page_requested = pyqtSignal(int)
@@ -109,10 +122,10 @@ class NavigationSidebar(QFrame):
         brand.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(brand)
 
-        descriptor = QLabel("ANÁLISE DOCUMENTAL")
-        descriptor.setObjectName("SidebarDescriptor")
-        descriptor.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(descriptor)
+        self.descriptor = QLabel("ANÁLISE DOCUMENTAL")
+        self.descriptor.setObjectName("SidebarDescriptor")
+        self.descriptor.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(self.descriptor)
         layout.addSpacing(22)
 
         navigation_items = (
@@ -121,6 +134,7 @@ class NavigationSidebar(QFrame):
             ("Exploração", QStyle.StandardPixmap.SP_ComputerIcon),
         )
         self.buttons = []
+        self._navigation_items = navigation_items
         for index, (label, icon_type) in enumerate(navigation_items):
             button = QPushButton(label)
             button.setObjectName("NavigationButton")
@@ -136,13 +150,14 @@ class NavigationSidebar(QFrame):
         self.buttons[0].setChecked(True)
         layout.addStretch()
 
-        help_button = QPushButton("Ajuda e métodos")
-        help_button.setObjectName("SidebarHelpButton")
-        help_button.setIcon(
+        self.help_button = QPushButton("Ajuda e métodos")
+        self.help_button.setObjectName("SidebarHelpButton")
+        self.help_button.setIcon(
             self.style().standardIcon(QStyle.StandardPixmap.SP_DialogHelpButton)
         )
-        help_button.clicked.connect(self.help_requested)
-        layout.addWidget(help_button)
+        self.help_button.clicked.connect(self.help_requested)
+        layout.addWidget(self.help_button)
+        self.language = i18n.DEFAULT_LANGUAGE
 
     def set_page_enabled(self, index: int, enabled: bool) -> None:
         self.buttons[index].setEnabled(enabled)
@@ -150,9 +165,22 @@ class NavigationSidebar(QFrame):
     def set_current_index(self, index: int) -> None:
         self.buttons[index].setChecked(True)
 
+    def set_language(self, language: str) -> None:
+        self.language = i18n.normalize_language(language)
+        labels = (
+            ("Corpus", "Corpus"),
+            ("Resultados", "Results"),
+            ("Exploração", "Explore"),
+        )
+        for button, (pt, en) in zip(self.buttons, labels):
+            button.setText(en if self.language == "en" else pt)
+        self.descriptor.setText("DOCUMENT ANALYSIS" if self.language == "en" else "ANÁLISE DOCUMENTAL")
+        self.help_button.setText("Help and methods" if self.language == "en" else "Ajuda e métodos")
+
 
 class WorkspaceHeader(QFrame):
     help_requested = pyqtSignal()
+    language_requested = pyqtSignal()
 
     PAGES = (
         ("Corpus", "Prepare documentos e parâmetros para a análise."),
@@ -181,6 +209,11 @@ class WorkspaceHeader(QFrame):
         self.context = QLabel("CORPUS OFFLINE")
         self.context.setObjectName("WorkspaceContext")
         layout.addWidget(self.context)
+        self.language_button = QPushButton("EN")
+        self.language_button.setObjectName("HeaderIconButton")
+        self.language_button.setToolTip("Switch to English")
+        self.language_button.clicked.connect(self.language_requested)
+        layout.addWidget(self.language_button)
         help_button = QPushButton()
         help_button.setObjectName("HeaderIconButton")
         help_button.setIcon(
@@ -189,12 +222,37 @@ class WorkspaceHeader(QFrame):
         help_button.setToolTip("Abrir ajuda")
         help_button.clicked.connect(self.help_requested)
         layout.addWidget(help_button)
+        self.language = i18n.DEFAULT_LANGUAGE
+        self._context_value = "CORPUS OFFLINE"
         self.set_page(0)
 
     def set_page(self, index: int) -> None:
+        self.current_index = index
         title, description = self.PAGES[index]
+        if self.language == "en":
+            translated = (
+                ("Corpus", "Prepare documents and analysis parameters."),
+                ("Results", "Review the processed corpus and open the audit trail."),
+                ("Visual exploration", "Compare documents, periods and indicators."),
+            )
+            title, description = translated[index]
         self.title.setText(title)
         self.description.setText(description)
+
+    def set_context(self, text: str) -> None:
+        self._context_value = text
+        if self.language == "en":
+            text = text.replace("DOCUMENTOS", "DOCUMENTS").replace("PROCESSANDO", "PROCESSING")
+        self.context.setText(text)
+
+    def set_language(self, language: str) -> None:
+        self.language = i18n.normalize_language(language)
+        self.language_button.setText("PT" if self.language == "en" else "EN")
+        self.language_button.setToolTip(
+            "Mudar para português" if self.language == "en" else "Switch to English"
+        )
+        self.set_page(getattr(self, "current_index", 0))
+        self.set_context(getattr(self, "_context_value", "CORPUS OFFLINE"))
 
 
 class SetupWorkspace(QWidget):
@@ -208,6 +266,7 @@ class SetupWorkspace(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.language = i18n.DEFAULT_LANGUAGE
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 14, 16, 14)
         root.setSpacing(12)
@@ -230,9 +289,9 @@ class SetupWorkspace(QWidget):
         layout.setSpacing(10)
 
         header = QHBoxLayout()
-        title = QLabel("Documentos")
-        title.setObjectName("WorkspaceTitle")
-        header.addWidget(title)
+        self.documents_title = QLabel("Documentos")
+        self.documents_title.setObjectName("WorkspaceTitle")
+        header.addWidget(self.documents_title)
         self.file_count = QLabel("0 documentos")
         self.file_count.setObjectName("MutedText")
         header.addWidget(self.file_count)
@@ -269,9 +328,9 @@ class SetupWorkspace(QWidget):
         layout.setSpacing(9)
 
         header = QHBoxLayout()
-        title = QLabel("Configuração da análise")
-        title.setObjectName("WorkspaceTitle")
-        header.addWidget(title)
+        self.analysis_title = QLabel("Configuração da análise")
+        self.analysis_title.setObjectName("WorkspaceTitle")
+        header.addWidget(self.analysis_title)
         header.addStretch()
         self.btn_methodology = QPushButton("Métodos")
         self.btn_methodology.clicked.connect(self.methodology_requested)
@@ -279,13 +338,14 @@ class SetupWorkspace(QWidget):
         layout.addLayout(header)
 
         terms_header = QHBoxLayout()
-        terms_label = QLabel("Termos e categorias")
-        terms_label.setObjectName("FieldLabel")
-        terms_header.addWidget(terms_label)
+        self.terms_label = QLabel("Termos e categorias")
+        self.terms_label.setObjectName("FieldLabel")
+        terms_header.addWidget(self.terms_label)
         terms_header.addStretch()
         search_help = QPushButton()
         search_help.setObjectName("InlineIconButton")
         search_help.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogHelpButton))
+        self.search_help = search_help
         search_help.setToolTip("Sintaxe de termos e categorias")
         search_help.clicked.connect(self.search_help_requested)
         terms_header.addWidget(search_help)
@@ -299,9 +359,9 @@ class SetupWorkspace(QWidget):
         )
         layout.addWidget(self.terms_input, stretch=1)
 
-        analyses_label = QLabel("Análises ativas")
-        analyses_label.setObjectName("FieldLabel")
-        layout.addWidget(analyses_label)
+        self.analyses_label = QLabel("Análises ativas")
+        self.analyses_label.setObjectName("FieldLabel")
+        layout.addWidget(self.analyses_label)
         grid = QGridLayout()
         grid.setHorizontalSpacing(12)
         grid.setVerticalSpacing(8)
@@ -329,12 +389,13 @@ class SetupWorkspace(QWidget):
         ):
             checkbox.setChecked(True)
             checkbox.setToolTip(tooltips[checkbox])
+        self.president_checkbox.setChecked(False)
+        self.president_checkbox.setVisible(False)
         grid.addWidget(self.sentiment_checkbox, 0, 0)
         grid.addWidget(self.emotions_checkbox, 1, 0)
         grid.addWidget(self.textmetrics_checkbox, 2, 0)
         grid.addWidget(self.kwic_checkbox, 3, 0)
-        grid.addWidget(self.president_checkbox, 4, 0)
-        grid.addWidget(self.ocr_checkbox, 5, 0)
+        grid.addWidget(self.ocr_checkbox, 4, 0)
         layout.addLayout(grid)
         return panel
 
@@ -368,25 +429,101 @@ class SetupWorkspace(QWidget):
         return bar
 
     def set_file_count(self, count: int) -> None:
-        self.file_count.setText(f"{count} documento{'s' if count != 1 else ''}")
+        if self.language == "en":
+            self.file_count.setText(f"{count} document{'s' if count != 1 else ''}")
+        else:
+            self.file_count.setText(f"{count} documento{'s' if count != 1 else ''}")
+
+    def set_language(self, language: str) -> None:
+        self.language = i18n.normalize_language(language)
+        english = self.language == "en"
+        self.documents_title.setText("Documents" if english else "Documentos")
+        self.btn_add.setText("Add files" if english else "Adicionar arquivos")
+        self.btn_clear.setToolTip("Clear list" if english else "Limpar lista")
+        self.drop_zone.set_language(self.language)
+        self.analysis_title.setText("Analysis settings" if english else "Configuração da análise")
+        self.btn_methodology.setText("Methods" if english else "Métodos")
+        self.terms_label.setText("Terms and categories" if english else "Termos e categorias")
+        self.search_help.setToolTip(
+            "Term and category syntax" if english else "Sintaxe de termos e categorias"
+        )
+        self.terms_input.setPlaceholderText(
+            "climate\n"
+            '"greenhouse effect"\n'
+            'MITIGATION: carbon, methane, "greenhouse effect"'
+            if english
+            else "clima\n"
+            '"efeito estufa"\n'
+            'MITIGAÇÃO: carbono, metano, "efeito estufa"'
+        )
+        self.analyses_label.setText("Active analyses" if english else "Análises ativas")
+        checkbox_texts = {
+            self.sentiment_checkbox: ("Sentiment", "Sentimento"),
+            self.emotions_checkbox: ("NRC emotions", "Emoções NRC"),
+            self.textmetrics_checkbox: ("Text metrics", "Métricas textuais"),
+            self.kwic_checkbox: ("KWIC and co-occurrence", "KWIC e coocorrência"),
+            self.president_checkbox: ("Detect president", "Detectar presidente"),
+            self.ocr_checkbox: ("OCR on scanned pages", "OCR em páginas escaneadas"),
+        }
+        checkbox_tips = {
+            self.sentiment_checkbox: (
+                "Classifies sentence sentiment with LeIA/VADER-PT.",
+                "Classifica o sentimento das sentenças com LeIA/VADER-PT.",
+            ),
+            self.emotions_checkbox: (
+                "Counts emotions from the NRC lexicon configured in the project.",
+                "Conta emoções do léxico NRC configurado no projeto.",
+            ),
+            self.textmetrics_checkbox: (
+                "Calculates readability, lexical diversity and frequencies.",
+                "Calcula legibilidade, diversidade lexical e frequências.",
+            ),
+            self.kwic_checkbox: (
+                "Registers context and co-occurrences for searched terms.",
+                "Registra contexto e coocorrências dos termos pesquisados.",
+            ),
+            self.president_checkbox: (
+                "Identifies the president from text and year.",
+                "Identifica o presidente a partir do texto e do ano.",
+            ),
+            self.ocr_checkbox: (
+                "Applies Tesseract only to pages without extractable text.",
+                "Aplica Tesseract somente em páginas sem texto extraível.",
+            ),
+        }
+        for checkbox, (en, pt) in checkbox_texts.items():
+            checkbox.setText(en if english else pt)
+            tip_en, tip_pt = checkbox_tips[checkbox]
+            checkbox.setToolTip(tip_en if english else tip_pt)
+        self.btn_process.setText("Process corpus" if english else "Processar corpus")
+        self.btn_cancel.setText("Cancel" if english else "Cancelar")
+        if self.processing_label.text() in {
+            "Pronto para processar",
+            "Ready to process",
+        }:
+            self.processing_label.setText("Ready to process" if english else "Pronto para processar")
+        self.set_file_count(self.file_list.count())
 
 
 class ResultsWorkspace(QWidget):
     export_requested = pyqtSignal()
     details_requested = pyqtSignal()
     charts_requested = pyqtSignal()
+    review_requested = pyqtSignal()
+    coding_import_requested = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.language = i18n.DEFAULT_LANGUAGE
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 14, 16, 14)
         layout.setSpacing(10)
         layout.addWidget(self._build_summary_band())
 
         header = QHBoxLayout()
-        title = QLabel("Resultados do corpus")
-        title.setObjectName("WorkspaceTitle")
-        header.addWidget(title)
+        self.results_title = QLabel("Resultados do corpus")
+        self.results_title.setObjectName("WorkspaceTitle")
+        header.addWidget(self.results_title)
         header.addStretch()
         self.btn_charts = QPushButton("Explorar gráficos")
         self.btn_charts.clicked.connect(self.charts_requested)
@@ -395,6 +532,10 @@ class ResultsWorkspace(QWidget):
         self.btn_details.setEnabled(False)
         self.btn_details.clicked.connect(self.details_requested)
         header.addWidget(self.btn_details)
+        self.btn_review = QPushButton("Revisar metadados")
+        self.btn_review.setEnabled(False)
+        self.btn_review.clicked.connect(self.review_requested)
+        header.addWidget(self.btn_review)
         self.btn_export = QPushButton("Exportar")
         self.btn_export.setObjectName("PrimaryButton")
         self.btn_export.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_DialogSaveButton))
@@ -404,15 +545,51 @@ class ResultsWorkspace(QWidget):
         layout.addLayout(header)
 
         self.content = QStackedWidget()
-        empty = QLabel("Nenhum resultado disponível")
-        empty.setObjectName("EmptyState")
-        empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.content.addWidget(empty)
+        self.empty = QLabel("Nenhum resultado disponível")
+        self.empty.setObjectName("EmptyState")
+        self.empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.content.addWidget(self.empty)
+        self.result_tabs = QTabWidget()
+        documents_page = QWidget()
+        documents_layout = QVBoxLayout(documents_page)
+        documents_layout.setContentsMargins(0, 0, 0, 0)
         self.results_table = QTableWidget(0, 8)
         self.results_table.setObjectName("ResultsTable")
         self.results_table.setAlternatingRowColors(True)
-        self.content.addWidget(self.results_table)
+        documents_layout.addWidget(self.results_table)
+        self.result_tabs.addTab(documents_page, "Documentos")
+
+        corpus_page = QWidget()
+        corpus_layout = QVBoxLayout(corpus_page)
+        corpus_layout.setContentsMargins(0, 0, 0, 0)
+        corpus_controls = QHBoxLayout()
+        self.corpus_table_selector = QComboBox()
+        self._corpus_selector_items = (
+            ("Autores consolidados", "authors"),
+            ("Instituições", "institutions"),
+            ("Dispersão de termos", "dispersion"),
+            ("Termos distintivos (keyness)", "keyness"),
+            ("Associação entre termos (NPMI)", "cooccurrence_association"),
+            ("Mudança lexical temporal", "temporal_change"),
+            ("Diagnóstico de sentimento", "sentiment_diagnostics"),
+            ("Matriz de similaridade", "similarity"),
+        )
+        for label, key in self._corpus_selector_items:
+            self.corpus_table_selector.addItem(label, key)
+        self.corpus_table_selector.currentIndexChanged.connect(self._populate_corpus_table)
+        corpus_controls.addWidget(self.corpus_table_selector, stretch=1)
+        self.btn_import_coding = QPushButton("Importar codificação")
+        self.btn_import_coding.setToolTip("CSV com colunas unit, coder e code")
+        self.btn_import_coding.clicked.connect(self.coding_import_requested)
+        corpus_controls.addWidget(self.btn_import_coding)
+        corpus_layout.addLayout(corpus_controls)
+        self.corpus_table = QTableWidget(0, 0)
+        self.corpus_table.setAlternatingRowColors(True)
+        corpus_layout.addWidget(self.corpus_table, stretch=1)
+        self.result_tabs.addTab(corpus_page, "Sínteses do corpus")
+        self.content.addWidget(self.result_tabs)
         layout.addWidget(self.content, stretch=1)
+        self.corpus_analyses = {}
         self.set_results_summary([])
 
     def _build_summary_band(self) -> QFrame:
@@ -426,8 +603,7 @@ class ResultsWorkspace(QWidget):
         self.sentiment_value = self._summary_item(layout, "SENTIMENTO MÉDIO")
         return band
 
-    @staticmethod
-    def _summary_item(layout: QHBoxLayout, label: str) -> QLabel:
+    def _summary_item(self, layout: QHBoxLayout, label: str) -> QLabel:
         container = QWidget()
         item_layout = QVBoxLayout(container)
         item_layout.setContentsMargins(12, 0, 12, 0)
@@ -439,6 +615,9 @@ class ResultsWorkspace(QWidget):
         item_layout.addWidget(caption)
         item_layout.addWidget(value)
         layout.addWidget(container, stretch=1)
+        if not hasattr(self, "_summary_captions"):
+            self._summary_captions = []
+        self._summary_captions.append(caption)
         return value
 
     def set_results_summary(self, results) -> None:
@@ -456,3 +635,108 @@ class ResultsWorkspace(QWidget):
         self.sentiment_value.setText(f"{mean:.3f}" if compounds else "-")
         self.content.setCurrentIndex(1 if results else 0)
         self.btn_charts.setEnabled(bool(results))
+
+    def set_corpus_analyses(self, analyses) -> None:
+        self.corpus_analyses = dict(analyses or {})
+        self._populate_corpus_table()
+
+    def _populate_corpus_table(self) -> None:
+        if not hasattr(self, "corpus_table"):
+            return
+        key = self.corpus_table_selector.currentData()
+        if key in {"authors", "institutions"}:
+            rows = list((self.corpus_analyses.get("entities") or {}).get(key, []))
+        elif key == "similarity":
+            similarity = self.corpus_analyses.get("similarity") or {}
+            labels = list(similarity.get("labels", []))
+            rows = [
+                {"documento": label, **{other: value for other, value in zip(labels, similarity.get("matrix", [])[index])}}
+                for index, label in enumerate(labels)
+            ]
+        else:
+            rows = list(self.corpus_analyses.get(key, []))
+        headers = list(rows[0]) if rows else []
+        self.corpus_table.setColumnCount(len(headers))
+        self.corpus_table.setHorizontalHeaderLabels([self._corpus_header(header) for header in headers])
+        self.corpus_table.setRowCount(len(rows))
+        for row_index, row in enumerate(rows):
+            for column_index, header in enumerate(headers):
+                value = row.get(header, "")
+                if isinstance(value, list):
+                    value = "; ".join(str(item) for item in value)
+                self.corpus_table.setItem(row_index, column_index, QTableWidgetItem(str(value)))
+        self.corpus_table.resizeColumnsToContents()
+
+    def _corpus_header(self, key: str) -> str:
+        labels = {
+            "name": "Nome", "documents": "Documentos", "fractional_documents": "Contagem fracionária",
+            "words": "Palavras", "year_start": "Ano inicial", "year_end": "Ano final",
+            "document_types": "Tipos", "files": "Arquivos", "term": "Termo", "frequency": "Frequência",
+            "dp": "DP", "document_range": "Alcance (docs)", "document_range_pct": "Alcance (%)",
+            "group": "Grupo", "g2": "G²", "log_ratio": "Log-ratio", "p_value": "p", "q_value": "q (BH)",
+            "term_a": "Termo A", "term_b": "Termo B", "npmi": "NPMI",
+            "period_start": "Período inicial", "period_end": "Período final", "js_divergence": "Divergência JS",
+            "top_terms": "Termos que mais mudaram", "filename": "Arquivo", "lexicon_coverage_pct": "Cobertura léxica (%)",
+        }
+        text = labels.get(key, key.replace("_", " ").title())
+        translations = {
+            "Nome": "Name",
+            "Documentos": "Documents",
+            "Contagem fracionária": "Fractional count",
+            "Palavras": "Words",
+            "Ano inicial": "Start year",
+            "Ano final": "End year",
+            "Tipos": "Types",
+            "Arquivos": "Files",
+            "Termo": "Term",
+            "Frequência": "Frequency",
+            "Alcance (docs)": "Range (docs)",
+            "Alcance (%)": "Range (%)",
+            "Grupo": "Group",
+            "Termo A": "Term A",
+            "Termo B": "Term B",
+            "Período inicial": "Start period",
+            "Período final": "End period",
+            "Divergência JS": "JS divergence",
+            "Termos que mais mudaram": "Terms that changed most",
+            "Arquivo": "File",
+            "Cobertura léxica (%)": "Lexicon coverage (%)",
+        }
+        return translations.get(text, text) if self.language == "en" else text
+
+    def set_language(self, language: str) -> None:
+        self.language = i18n.normalize_language(language)
+        english = self.language == "en"
+        self.results_title.setText("Corpus results" if english else "Resultados do corpus")
+        self.btn_charts.setText("Explore charts" if english else "Explorar gráficos")
+        self.btn_details.setText("View details" if english else "Ver detalhes")
+        self.btn_review.setText("Review metadata" if english else "Revisar metadados")
+        self.btn_export.setText("Export" if english else "Exportar")
+        self.empty.setText("No results available" if english else "Nenhum resultado disponível")
+        self.result_tabs.setTabText(0, "Documents" if english else "Documentos")
+        self.result_tabs.setTabText(1, "Corpus summaries" if english else "Sínteses do corpus")
+        summary_labels = (
+            ("DOCUMENTS", "DOCUMENTOS"),
+            ("WORDS IN CORPUS", "PALAVRAS NO CORPUS"),
+            ("YEARS IDENTIFIED", "ANOS IDENTIFICADOS"),
+            ("MEAN SENTIMENT", "SENTIMENTO MÉDIO"),
+        )
+        for caption, (en, pt) in zip(getattr(self, "_summary_captions", []), summary_labels):
+            caption.setText(en if english else pt)
+        for index, (pt, _key) in enumerate(self._corpus_selector_items):
+            translations = {
+                "Autores consolidados": "Consolidated authors",
+                "Instituições": "Institutions",
+                "Dispersão de termos": "Term dispersion",
+                "Termos distintivos (keyness)": "Distinctive terms (keyness)",
+                "Associação entre termos (NPMI)": "Term association (NPMI)",
+                "Mudança lexical temporal": "Temporal lexical change",
+                "Diagnóstico de sentimento": "Sentiment diagnostics",
+                "Matriz de similaridade": "Similarity matrix",
+            }
+            self.corpus_table_selector.setItemText(index, translations.get(pt, pt) if english else pt)
+        self.btn_import_coding.setText("Import coding" if english else "Importar codificação")
+        self.btn_import_coding.setToolTip(
+            "CSV with unit, coder and code columns" if english else "CSV com colunas unit, coder e code"
+        )
+        self._populate_corpus_table()

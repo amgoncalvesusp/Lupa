@@ -31,7 +31,7 @@ def _result(**overrides):
 
 def test_methodology_sheet_created_and_records_options(tmp_path):
     out = tmp_path / "r.xlsx"
-    specs = build_column_specs(build_default_analyzers([], detect_sentiment=False))
+    specs = build_column_specs(build_default_analyzers([], detect_sentiment=False, detect_president=True))
     export_to_xlsx(
         [_result()],
         str(out),
@@ -60,7 +60,9 @@ def test_export_creates_main_and_excluded_sheets(tmp_path):
 
 def test_export_writes_values_in_schema_order(tmp_path):
     out = tmp_path / "r.xlsx"
-    specs = build_column_specs(build_default_analyzers([], detect_sentiment=False))
+    specs = build_column_specs(
+        build_default_analyzers([], detect_sentiment=False, detect_president=True)
+    )
     export_to_xlsx([_result()], str(out), specs)
     ws = openpyxl.load_workbook(out)["Contagem de Palavras"]
     header = [c.value for c in ws[1]]
@@ -147,3 +149,31 @@ def test_sentiment_sheet_only_when_present(tmp_path):
     )
     export_to_xlsx([result], str(out2))
     assert "Sentimento (Sentenças)" in openpyxl.load_workbook(out2).sheetnames
+
+
+def test_export_includes_bibliographic_and_corpus_analysis_sheets(tmp_path):
+    out = tmp_path / "corpus.xlsx"
+    results = [
+        _result(
+            filename="a.pdf",
+            title="Estudo A",
+            authors=[{"name": "Ana Souza", "affiliations": ["UFMG"]}],
+            affiliations=[{"name": "UFMG"}],
+            word_counts={"clima": 8, "energia": 2},
+        ),
+        _result(
+            filename="b.pdf",
+            year="2021",
+            title="Estudo B",
+            authors=[{"name": "Bruno Lima", "affiliations": ["Instituto Clima"]}],
+            word_counts={"carvão": 8, "energia": 2},
+        ),
+    ]
+    export_to_xlsx(results, str(out))
+
+    sheets = openpyxl.load_workbook(out).sheetnames
+    assert "Metadados Bibliográficos" in sheets
+    assert "Autores Consolidados" in sheets
+    assert "Instituições" in sheets
+    assert "Similaridade" in sheets
+    assert "Mudança Lexical" in sheets

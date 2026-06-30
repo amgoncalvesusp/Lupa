@@ -2,7 +2,7 @@
 
 **Lupa** é um software desktop standalone para **análise de conteúdo e métricas textuais** de arquivos PDF, DOCX e TXT, de forma padronizada, auditável e replicável. Voltado à pesquisa acadêmica que exige rigor metodológico na análise de corpus documentais — com ênfase em análise de conteúdo (Bardin) e núcleos de significação (Aguiar & Ozella).
 
-> Lupa originou-se do *Contador de Palavras* e o expande para uma plataforma de análise documental: além da contagem, oferece análise de sentimento, legibilidade, diversidade lexical, palavras-chave e concordância (KWIC).
+> English documentation is available in [README.en.md](README.en.md). The application interface can be switched between Portuguese and English from the language button in the header.
 
 ![Linguagem](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Plataforma](https://img.shields.io/badge/Plataforma-Windows-lightgrey)
@@ -19,11 +19,12 @@ O Lupa realiza, em lote, a extração e a análise de documentos seguindo regras
 - **Busca de termos e expressões** definidos pelo pesquisador (total e no corpus)
 - **Análise de sentimento** (LeIA / VADER-PT) por sentença
 - **Emoções discretas** (NRC EmoLex, quando o léxico editável está preenchido)
-- **Métricas textuais**: legibilidade (Flesch-PT), diversidade lexical (TTR / Guiraud), frequência de palavras-chave
+- **Métricas textuais**: legibilidade (Flesch-PT), diversidade lexical (TTR / Guiraud / MATTR), frequência de palavras-chave
 - **Concordância (KWIC)**: contexto ao redor de cada ocorrência dos termos
 - **Co-ocorrência**: pares de termos que aparecem na mesma sentença
 - **Menções territoriais**: estados, regiões e biomas brasileiros via gazetteer editável
-- **Metadados**: ano, tipo de documento e presidente (opcional/configurável)
+- **Metadados bibliográficos**: título, autores, afiliações, ano, tipo documental e identificadores, com evidências e revisão manual
+- **Análises de corpus**: consolidação de autores/instituições, dispersão DP, keyness, NPMI, similaridade e mudança lexical temporal
 - **Indicadores de confiabilidade**: páginas com texto, páginas problemáticas, uso de OCR, grau de confiança
 
 Resultados em interface gráfica moderna e exportáveis em XLSX formatado, CSV e JSON, com saídas de resumo e detalhamento (páginas excluídas, sentenças, frequência de palavras, concordância KWIC).
@@ -31,18 +32,20 @@ Resultados em interface gráfica moderna e exportáveis em XLSX formatado, CSV e
 ## Principais funcionalidades
 
 - Interface gráfica em PyQt6 com drag-and-drop para múltiplos PDFs, DOCX, TXT e pastas
+- Botão de idioma para alternar a interface, ajuda integrada e exportações entre português e inglês
 - Processamento assíncrono (não trava a interface) com barra de progresso por arquivo e geral
 - OCR automático via Tesseract para PDFs escaneados (idioma português)
 - Detecção heurística de páginas pré-textuais (ficha catalográfica, sumário, expediente, lista de ministros etc.)
-- Detecção automática de metadados (ano, tipo de documento) a partir do conteúdo do PDF
-- Detecção de presidente **opcional** e configurável via `data/presidents.json` (adaptável a outros países/períodos)
+- Detecção automática offline de título, autores, afiliações, ano, tipo e identificadores a partir de metadados embutidos e cabeçalho
+- Revisão manual auditável dos metadados, persistida no projeto; autores e instituições são consolidados no corpus
+- A detecção presidencial permanece disponível internamente para compatibilidade, mas fica oculta e desabilitada
 - Busca de palavras e expressões com suporte a busca exata entre aspas
 - Análise de sentimento em português (LeIA / VADER-PT) por sentença, com detalhamento exportável para análise de conteúdo e núcleos de significação
 - Emoções discretas por léxico NRC editável (`data/nrc_emolex_pt.txt`), com trilha de palavras associadas
-- Métricas textuais: legibilidade (Flesch-PT), diversidade lexical (TTR / Guiraud) e frequência de palavras-chave (com aba detalhada no XLSX)
+- Métricas textuais: legibilidade (Flesch-PT), diversidade lexical (TTR / Guiraud / MATTR), frequência e segmentação por coesão lexical
 - Concordância KWIC: contexto ao redor de cada ocorrência dos termos de busca (aba "Concordância (KWIC)"), a unidade de contexto da análise de conteúdo
 - Co-ocorrência de termos por sentença e síntese temporal por ano do corpus
-- Central de gráficos interativos: séries temporais, comparação, sentimento empilhado, dispersão lexical, heatmap de coocorrência e perfil territorial
+- Central com 14 gráficos interativos, incluindo autores, instituições, dispersão DP, keyness, similaridade, NPMI, mudança lexical e diagnóstico de sentimento
 - Menções territoriais brasileiras via `data/gazetteer_br.json`
 - Salvar e abrir projetos `.lupa.json` com arquivos, termos, categorias e flags
 - Exportação em XLSX formatado, CSV interoperável (`;`, `utf-8-sig`) e JSON para arquivamento/reuso em R ou Python
@@ -57,9 +60,14 @@ Resultados em interface gráfica moderna e exportáveis em XLSX formatado, CSV e
 
 ## Instalação
 
-### Opção 1: Usuário final (executável)
+### Opção 1: Usuário final (instalador Windows)
 
-> O executável compilado (`.exe`) será disponibilizado em **Releases** futuramente. Por enquanto, utilize a instalação de desenvolvimento.
+Execute `LupaSetup-1.0.1-x64.exe`. A instalação é feita por usuário em
+`%LOCALAPPDATA%\Programs\Lupa`, sem exigir privilégios administrativos, e cria
+atalhos no Menu Iniciar e, opcionalmente, na Área de Trabalho.
+
+O instalador inclui o runtime Python, as dependências do Lupa e o Tesseract OCR.
+Windows 10 1809 ou posterior, em arquitetura x64, é necessário.
 
 ### Opção 2: Desenvolvimento (a partir do código)
 
@@ -72,8 +80,8 @@ Resultados em interface gráfica moderna e exportáveis em XLSX formatado, CSV e
 **Passos:**
 
 ```bash
-git clone https://github.com/<usuario>/WordCounter.git
-cd WordCounter
+git clone https://github.com/<usuario>/Lupa.git
+cd Lupa
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
@@ -200,8 +208,7 @@ sobre o corpus analítico e exportadas no XLSX. Voltadas à análise de conteúd
   `ILF = 248,835 − 1,015 × (palavras/frases) − 84,6 × (sílabas/palavras)`.
   Classes: Muito fácil (≥75), Fácil (50–75), Difícil (25–50), Muito difícil (<25).
   A contagem de sílabas usa heurística de grupos vocálicos (aproximada).
-- **Diversidade lexical:** TTR (tipos/tokens) e Índice de Guiraud
-  (tipos/√tokens), mais estável quanto ao tamanho do texto.
+- **Diversidade lexical:** TTR, Índice de Guiraud e MATTR em janelas móveis. O tamanho efetivo e a quantidade de janelas são exportados.
 - **Frequência de palavras-chave:** palavras de conteúdo mais frequentes, após
   remoção de stopwords (lista editável em `data/stopwords_pt.txt`). As 10 mais
   frequentes vão para a tabela; as 30 mais frequentes, para a aba
@@ -261,11 +268,11 @@ os dados exibidos e exportar o gráfico em PNG. Clicar em uma barra ou ponto de
 documento abre seus detalhes. Os gráficos são descritivos: não representam
 inferência estatística nem relação causal.
 
-### Detecção de presidente (opcional)
+### Detecção de presidente (legada)
 
-A identificação do chefe de Estado é **opcional** (caixa de seleção "Detectar
-presidente", ligada por padrão). Desative-a para corpora genéricos — a coluna
-"Presidente" é então omitida da tabela e do XLSX.
+A identificação do chefe de Estado permanece no motor para compatibilidade com
+projetos históricos, mas a opção fica oculta e desabilitada para corpora gerais.
+A coluna "Presidente" é omitida da tabela e do XLSX.
 
 A lista é externa ao código, em `src/core/data/presidents.json`, e pode ser
 editada para adaptar a ferramenta a outros países ou períodos:
@@ -454,8 +461,8 @@ Cobertura atual do código próprio (excluindo a biblioteca vendorizada LeIA): *
 
 Trabalho desenvolvido no âmbito do Programa de Pós-graduação em Desenvolvimento Territorial e Meio Ambiente da Universidade de Araraquara (UNIARA):
 
-- Adriano Marques Gonçalves
-- Thaís Angeli
+- Adriano Marques Gonçalves — Universidade de Araraquara (UNIARA)
+- Thaís Angeli — Secretaria de Educação de Araraquara
 
 ---
 

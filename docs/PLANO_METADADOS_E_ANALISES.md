@@ -1,5 +1,13 @@
 # Plano de implementação: metadados, entidades e análises comparativas
 
+> English translation: [METADATA_AND_ANALYSES_PLAN.en.md](METADATA_AND_ANALYSES_PLAN.en.md)
+
+> Status em 20/06/2026: fases 0 a 8 implementadas e integradas às saídas
+> escritas, XLSX/CSV/JSON e à exploração visual. A fase 9 possui segmentação,
+> importação tabular e Krippendorff Alpha no núcleo. A detecção presidencial
+> permanece apenas como compatibilidade interna. Metadados revisados são
+> persistidos em projetos v2, e projetos v1 são migrados automaticamente.
+
 ## 1. Objetivo
 
 Generalizar o Lupa para corpora heterogêneos e permitir responder, de forma

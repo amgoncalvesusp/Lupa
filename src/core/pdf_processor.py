@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
 from .analysis import Analyzer, DocumentContext, build_default_analyzers
+from .bibliographic_metadata import extract_embedded_metadata
 from .corpus_filter import classify_all_pages
 from .ocr_engine import configure_tesseract
 from .text_extractor import extract_pages
@@ -23,7 +24,7 @@ class DocumentProcessor:
         analyzers: Optional[List[Analyzer]] = None,
         detect_sentiment: bool = True,
         detect_emotions: bool = True,
-        detect_president: bool = True,
+        detect_president: bool = False,
         detect_textmetrics: bool = True,
         detect_kwic: bool = True,
         categories=None,
@@ -95,6 +96,8 @@ class DocumentProcessor:
                 "pages_problematic": pages_problematic,
                 "ocr_pages_count": len(ocr_used_pages),
             },
+            source_path=str(path),
+            source_metadata=extract_embedded_metadata(path),
         )
 
         result: Dict = {

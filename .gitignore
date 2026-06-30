@@ -3,9 +3,12 @@ __pycache__/
 *.pyo
 build/
 dist/
+build-installer/
+dist-installer/
 *.spec
 !Lupa.spec
 .venv/
+.build-venv/
 venv/
 venv_build/
 .pytest_cache/

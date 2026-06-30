@@ -67,11 +67,16 @@ def test_analyzer_output_keys_and_aggregates():
         "sent_pct_neutro",
         "sent_n_sentencas",
         "sentiment_sentences",
+        "sent_ci_low",
+        "sent_ci_high",
+        "sent_lexicon_coverage_pct",
     ):
         assert key in out
     assert out["sent_n_sentencas"] == 2
     assert len(out["sentiment_sentences"]) == 2
     assert out["sentiment_sentences"][0]["page"] == 1
+    assert out["sent_ci_low"] <= out["sent_compound_medio"] <= out["sent_ci_high"]
+    assert 0 <= out["sent_lexicon_coverage_pct"] <= 100
 
 
 def test_analyzer_empty_corpus():

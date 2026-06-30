@@ -3,6 +3,7 @@
 import pytest
 
 from src.core.chart_data import (
+    build_corpus_chart,
     build_comparison_chart,
     build_cooccurrence_heatmap,
     build_lexical_scatter,
@@ -12,6 +13,7 @@ from src.core.chart_data import (
     chart_to_rows,
     filter_results,
 )
+from src.core.corpus_analysis import build_corpus_analyses
 
 pytestmark = pytest.mark.unit
 
@@ -151,3 +153,41 @@ def test_filter_results_and_chart_rows(results):
     rows = chart_to_rows(chart)
     assert rows[0] == ["Rótulo", "Positivo", "Neutro", "Negativo"]
     assert rows[1][0] == "b.pdf"
+
+
+@pytest.mark.parametrize(
+    ("mode", "kind"),
+    [
+        ("authors", "bar"),
+        ("institutions", "bar"),
+        ("dispersion", "scatter"),
+        ("keyness", "bar"),
+        ("similarity", "heatmap"),
+        ("association", "heatmap"),
+        ("temporal_change", "bar"),
+        ("sentiment_diagnostics", "bar"),
+    ],
+)
+def test_corpus_charts_share_analysis_tables(results, mode, kind):
+    enriched = [
+        {
+            **row,
+            "authors": [{"name": f"Autor {index}", "affiliations": ["Instituição X"]}],
+            "affiliations": [{"name": "Instituição X"}],
+            "word_counts": {"clima": 10 + index, "energia": 2 * index + 1},
+            "cooccurrence_base": {
+                "windows": 10,
+                "term_windows": {"clima": 5, "carbono": 4},
+                "pair_windows": {"clima\u241fcarbono": 3},
+            },
+            "sent_n_sentencas": 5,
+            "sent_ci_low": -0.1,
+            "sent_ci_high": 0.2,
+            "sent_lexicon_coverage_pct": 15,
+        }
+        for index, row in enumerate(results)
+    ]
+    chart = build_corpus_chart(build_corpus_analyses(enriched), mode)
+
+    assert chart.kind == kind
+    assert chart.title

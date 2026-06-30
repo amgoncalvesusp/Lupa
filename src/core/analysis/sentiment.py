@@ -27,6 +27,7 @@ sentences into indicators and meaning nuclei.
     instrumento para a apreensão da constituição dos sentidos.
 """
 
+import random
 import regex
 from typing import Dict, List
 
@@ -159,6 +160,9 @@ class SentimentAnalyzer:
             ColumnSpec("sent_pct_negativo", "% Sentenças Negativas", 16, "sentiment"),
             ColumnSpec("sent_pct_neutro", "% Sentenças Neutras", 16, "sentiment"),
             ColumnSpec("sent_n_sentencas", "Nº de Sentenças", 12, "sentiment"),
+            ColumnSpec("sent_ci_low", "Sentimento IC95% inferior", 16, "sentiment"),
+            ColumnSpec("sent_ci_high", "Sentimento IC95% superior", 16, "sentiment"),
+            ColumnSpec("sent_lexicon_coverage_pct", "Cobertura do léxico (%)", 16, "sentiment"),
         ]
 
     def run(self, ctx: DocumentContext) -> Dict[str, object]:
@@ -193,9 +197,18 @@ class SentimentAnalyzer:
                 "sent_pct_neutro": 0.0,
                 "sent_n_sentencas": 0,
                 "sentiment_sentences": [],
+                "sent_ci_low": 0.0,
+                "sent_ci_high": 0.0,
+                "sent_lexicon_coverage_pct": 0.0,
+                "sent_tokens": 0,
+                "sent_lexicon_hits": 0,
+                "sent_diagnostic_confidence": "baixa",
             }
 
         mean_compound = round(sum(compounds) / n, 4)
+        ci_low, ci_high = _bootstrap_mean_ci(compounds)
+        coverage, token_count, lexicon_hits = _lexicon_coverage(ctx, engine)
+        diagnostic_confidence = "alta" if n >= 30 and coverage >= 10 else "moderada" if n >= 10 and coverage >= 5 else "baixa"
         return {
             "sent_classe": classify(mean_compound),
             "sent_compound_medio": mean_compound,
@@ -204,4 +217,33 @@ class SentimentAnalyzer:
             "sent_pct_neutro": round(100 * counts[NEUTRAL] / n, 1),
             "sent_n_sentencas": n,
             "sentiment_sentences": sentences,
+            "sent_ci_low": ci_low,
+            "sent_ci_high": ci_high,
+            "sent_lexicon_coverage_pct": coverage,
+            "sent_tokens": token_count,
+            "sent_lexicon_hits": lexicon_hits,
+            "sent_diagnostic_confidence": diagnostic_confidence,
         }
+
+
+def _bootstrap_mean_ci(values: List[float], samples: int = 500) -> tuple[float, float]:
+    if len(values) <= 1:
+        value = round(values[0] if values else 0.0, 4)
+        return value, value
+    rng = random.Random(1729)
+    means = sorted(
+        sum(rng.choice(values) for _ in values) / len(values) for _ in range(samples)
+    )
+    return round(means[int(samples * 0.025)], 4), round(means[int(samples * 0.975) - 1], 4)
+
+
+def _lexicon_coverage(ctx: DocumentContext, engine) -> tuple[float, int, int]:
+    lexicon = getattr(engine, "lexicon", {})
+    tokens = regex.findall(
+        r"\p{L}+(?:[-']\p{L}+)*",
+        " ".join(ctx.pages_text[page - 1] for page in ctx.analytical_page_numbers).lower(),
+    )
+    if not tokens:
+        return 0.0, 0, 0
+    covered = sum(token in lexicon for token in tokens)
+    return round(100 * covered / len(tokens), 2), len(tokens), covered

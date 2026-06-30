@@ -9,6 +9,7 @@ from PyQt6.QtGui import QColor, QFont, QPainter, QPen
 from PyQt6.QtWidgets import QToolTip, QWidget
 
 from src.core.chart_data import ChartData
+from src.gui import i18n
 
 COLORS = (
     QColor("#0f766e"),
@@ -34,6 +35,7 @@ class ChartCanvas(QWidget):
         self._hidden_series: Set[str] = set()
         self._hits: List[Tuple[QRectF, Dict[str, str], str]] = []
         self._zoom = 1.0
+        self.language = i18n.DEFAULT_LANGUAGE
 
     @property
     def data(self) -> ChartData:
@@ -60,6 +62,10 @@ class ChartCanvas(QWidget):
     def export_png(self, path: str) -> bool:
         return self.grab().save(path, "PNG")
 
+    def set_language(self, language: str) -> None:
+        self.language = i18n.normalize_language(language)
+        self.update()
+
     def paintEvent(self, _event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -71,7 +77,9 @@ class ChartCanvas(QWidget):
             painter.drawText(
                 self.rect(),
                 Qt.AlignmentFlag.AlignCenter,
-                "Não há dados disponíveis para este gráfico.",
+                "No data available for this chart."
+                if self.language == "en"
+                else "Não há dados disponíveis para este gráfico.",
             )
             return
         if self._data.kind == "line":
@@ -122,7 +130,10 @@ class ChartCanvas(QWidget):
         font = QFont("Segoe UI", 13)
         font.setBold(True)
         painter.setFont(font)
-        painter.drawText(QRectF(18, 12, self.width() - 36, 30), self._data.title)
+        painter.drawText(
+            QRectF(18, 12, self.width() - 36, 30),
+            _chart_text(self._data.title, self.language),
+        )
 
     def _draw_axes(self, painter: QPainter, plot: QRectF, min_y: float, max_y: float) -> None:
         painter.setFont(QFont("Segoe UI", 8))
@@ -162,7 +173,7 @@ class ChartCanvas(QWidget):
                 painter.setBrush(color)
                 painter.drawEllipse(point, 4.5, 4.5)
                 metadata = _metadata(series, idx)
-                tooltip = f"{series.name}\n{self._data.labels[idx]}: {_fmt(value)}{self._data.value_suffix}"
+                tooltip = f"{_chart_text(series.name, self.language)}\n{self._data.labels[idx]}: {_fmt(value)}{self._data.value_suffix}"
                 self._hits.append((QRectF(x - 9, y - 9, 18, 18), metadata, tooltip))
             for left, right in zip(points, points[1:]):
                 painter.drawLine(left, right)
@@ -233,7 +244,11 @@ class ChartCanvas(QWidget):
             painter.setPen(QPen(QColor("#ffffff"), 1.5))
             painter.drawEllipse(QPointF(x, y), radius, radius)
             metadata = dict(point.metadata)
-            tooltip = f"{point.label}\nLegibilidade: {_fmt(point.x)}\nTTR: {_fmt(point.y)}\nPalavras: {_fmt(point.size)}"
+            tooltip = (
+                f"{point.label}\nReadability: {_fmt(point.x)}\nTTR: {_fmt(point.y)}\nWords: {_fmt(point.size)}"
+                if self.language == "en"
+                else f"{point.label}\nLegibilidade: {_fmt(point.x)}\nTTR: {_fmt(point.y)}\nPalavras: {_fmt(point.size)}"
+            )
             self._hits.append((QRectF(x - radius, y - radius, 2 * radius, 2 * radius), metadata, tooltip))
 
     def _draw_heatmap(self, painter: QPainter) -> None:
@@ -259,7 +274,8 @@ class ChartCanvas(QWidget):
                     painter.setPen(QColor("#ffffff") if value / max_value > 0.5 else QColor("#103d3a"))
                     painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, _fmt(value))
                 metadata = {"term_a": labels[row_idx], "term_b": labels[col_idx], "count": str(value)}
-                self._hits.append((rect, metadata, f"{labels[row_idx]} × {labels[col_idx]}: {_fmt(value)} sentenças"))
+                unit = "sentences" if self.language == "en" else "sentenças"
+                self._hits.append((rect, metadata, f"{labels[row_idx]} × {labels[col_idx]}: {_fmt(value)} {unit}"))
         for col_idx, label in enumerate(labels):
             x = plot.left() + col_idx * cell
             painter.save()
@@ -282,7 +298,7 @@ class ChartCanvas(QWidget):
             painter.setPen(Qt.PenStyle.NoPen)
             painter.drawRect(QRectF(x, y + idx * 18, 10, 10))
             painter.setPen(QColor("#9ca3af") if series.name in self._hidden_series else QColor("#3b454f"))
-            painter.drawText(QRectF(x + 15, y - 3 + idx * 18, 150, 18), _elide(series.name, 24))
+            painter.drawText(QRectF(x + 15, y - 3 + idx * 18, 150, 18), _elide(_chart_text(series.name, self.language), 24))
 
     def _visible_series(self):
         return tuple(
@@ -329,6 +345,45 @@ def _fmt(value: float) -> str:
 
 def _elide(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[: limit - 1] + "…"
+
+
+def _chart_text(text: str, language: str) -> str:
+    if language != "en":
+        return text
+    translations = {
+        "Série temporal do corpus": "Corpus time series",
+        "Distribuição de sentimento": "Sentiment distribution",
+        "Legibilidade e diversidade lexical": "Readability and lexical diversity",
+        "Matriz de coocorrência por sentença": "Sentence co-occurrence matrix",
+        "Menções territoriais": "Territorial mentions",
+        "Autores com maior contribuição": "Authors with highest contribution",
+        "Instituições com maior contribuição": "Institutions with highest contribution",
+        "Frequência e dispersão dos termos": "Term frequency and dispersion",
+        "Termos distintivos por grupo": "Distinctive terms by group",
+        "Similaridade textual entre documentos": "Textual similarity between documents",
+        "Associação normalizada entre termos (NPMI)": "Normalized term association (NPMI)",
+        "Mudança lexical entre períodos": "Lexical change between periods",
+        "Cobertura do léxico de sentimento": "Sentiment lexicon coverage",
+        "Palavras": "Words",
+        "Sentimento médio": "Mean sentiment",
+        "Legibilidade média": "Mean readability",
+        "% positivas": "% positive",
+        "% negativas": "% negative",
+        "Positivo": "Positive",
+        "Neutro": "Neutral",
+        "Negativo": "Negative",
+        "Menções": "Mentions",
+        "Documentos": "Documents",
+        "Cobertura (%)": "Coverage (%)",
+        "Divergência Jensen-Shannon": "Jensen-Shannon divergence",
+    }
+    if text.startswith("Comparação entre documentos - "):
+        return text.replace("Comparação entre documentos - ", "Document comparison - ", 1)
+    if text.startswith("Termo: "):
+        return text.replace("Termo: ", "Term: ", 1)
+    if text.startswith("Categoria: "):
+        return text.replace("Categoria: ", "Category: ", 1)
+    return translations.get(text, i18n.value(text, language))
 
 
 def _sentiment_color(value: float) -> QColor:

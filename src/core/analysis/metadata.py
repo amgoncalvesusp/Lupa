@@ -3,17 +3,23 @@
 from typing import Dict, List
 
 from .base import ColumnSpec, DocumentContext
+from ..bibliographic_metadata import detect_bibliographic_metadata
 from ..metadata_detector import detect_metadata
 
 
 class MetadataAnalyzer:
     name = "metadata"
 
-    def __init__(self, detect_president: bool = True):
+    def __init__(self, detect_president: bool = False):
         self.detect_president = detect_president
 
     def columns(self) -> List[ColumnSpec]:
-        cols = [ColumnSpec("year", "Ano", 8)]
+        cols = [
+            ColumnSpec("title", "Título", 35),
+            ColumnSpec("authors_display", "Autores", 32),
+            ColumnSpec("affiliations_display", "Afiliações", 36),
+            ColumnSpec("year", "Ano", 8),
+        ]
         if self.detect_president:
             cols.append(ColumnSpec("president", "Presidente", 28))
         cols.append(ColumnSpec("document", "Documento", 32))
@@ -25,8 +31,12 @@ class MetadataAnalyzer:
         )
         # "president" key is always present so downstream consumers can use a
         # plain lookup; it is blank when detection is disabled.
+        bibliographic = detect_bibliographic_metadata(
+            ctx.pages_text, ctx.filename, ctx.source_metadata
+        )
         return {
-            "year": md["year"],
+            **bibliographic,
+            "year": bibliographic["publication_year"] or md["year"],
             "president": md["president"],
-            "document": md["document"],
+            "document": bibliographic["document_type"] or md["document"],
         }

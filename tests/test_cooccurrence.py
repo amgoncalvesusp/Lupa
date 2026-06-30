@@ -37,3 +37,14 @@ def test_three_terms_generate_three_pairs():
 
 def test_no_terms_returns_empty_list():
     assert _run("Clima e carbono.", []) == []
+
+
+def test_returns_window_marginals_for_association_metrics():
+    ctx = DocumentContext("a.pdf", ["Clima e carbono. Clima apenas."], [1], 1)
+    out = CooccurrenceAnalyzer([("clima", False), ("carbono", False)]).run(ctx)
+
+    assert out["cooccurrence_base"] == {
+        "windows": 2,
+        "term_windows": {"clima": 2, "carbono": 1},
+        "pair_windows": {"clima\u241fcarbono": 1},
+    }

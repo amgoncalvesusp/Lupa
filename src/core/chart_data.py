@@ -293,6 +293,108 @@ def build_territory_chart(
     )
 
 
+def build_corpus_chart(analyses: Dict[str, object], mode: str) -> ChartData:
+    """Build a chart directly from one shared corpus-analysis table."""
+    if mode in {"authors", "institutions"}:
+        rows = list((analyses.get("entities") or {}).get(mode, []))[:20]
+        title = "Autores com maior contribuição" if mode == "authors" else "Instituições com maior contribuição"
+        return _ranked_bar(title, rows, "name", "documents", "Documentos")
+    if mode == "dispersion":
+        points = tuple(
+            ChartPoint(
+                label=str(row.get("term", "")),
+                x=_number(row.get("frequency")),
+                y=_number(row.get("dp")),
+                size=max(1.0, _number(row.get("document_range"))),
+                value=_number(row.get("document_range_pct")),
+                metadata=_meta(term=row.get("term", ""), range=row.get("document_range_pct", 0)),
+            )
+            for row in analyses.get("dispersion", [])
+        )
+        return ChartData(
+            kind="scatter",
+            title="Frequência e dispersão dos termos",
+            points=points,
+            x_label="Frequência",
+            y_label="DP (0 = uniforme; 1 = concentrado)",
+        )
+    if mode == "keyness":
+        rows = list(analyses.get("keyness", []))[:20]
+        labels = tuple(f"{row.get('group')}: {row.get('term')}" for row in rows)
+        values = tuple(_number(row.get("log_ratio")) for row in rows)
+        return ChartData(
+            kind="bar",
+            title="Termos distintivos por grupo",
+            labels=labels,
+            series=(ChartSeries("Log-ratio", values),),
+            x_label="Log-ratio (direção e efeito)",
+            y_label="Grupo e termo",
+        )
+    if mode == "similarity":
+        table = analyses.get("similarity") or {}
+        return ChartData(
+            kind="heatmap",
+            title="Similaridade textual entre documentos",
+            labels=tuple(table.get("labels", [])),
+            matrix=tuple(tuple(_number(value) for value in row) for row in table.get("matrix", [])),
+            x_label="Documento",
+            y_label="Documento",
+        )
+    if mode == "association":
+        rows = list(analyses.get("cooccurrence_association", []))
+        labels = tuple(sorted({str(row.get(key, "")) for row in rows for key in ("term_a", "term_b")}))
+        index = {label: position for position, label in enumerate(labels)}
+        matrix = [[0.0 for _ in labels] for _ in labels]
+        for row in rows:
+            left, right = index[str(row["term_a"])], index[str(row["term_b"])]
+            matrix[left][right] = matrix[right][left] = _number(row.get("npmi"))
+        return ChartData(
+            kind="heatmap",
+            title="Associação normalizada entre termos (NPMI)",
+            labels=labels,
+            matrix=tuple(tuple(line) for line in matrix),
+            x_label="Termo",
+            y_label="Termo",
+        )
+    if mode == "temporal_change":
+        rows = list(analyses.get("temporal_change", []))
+        labels = tuple(f"{row.get('period_start')} → {row.get('period_end')}" for row in rows)
+        values = tuple(_number(row.get("js_divergence")) for row in rows)
+        return ChartData(
+            kind="bar",
+            title="Mudança lexical entre períodos",
+            labels=labels,
+            series=(ChartSeries("Divergência Jensen-Shannon", values),),
+            x_label="Divergência",
+            y_label="Período",
+        )
+    rows = list(analyses.get("sentiment_diagnostics", []))
+    return _ranked_bar(
+        "Cobertura do léxico de sentimento",
+        rows,
+        "filename",
+        "lexicon_coverage_pct",
+        "Cobertura (%)",
+    )
+
+
+def _ranked_bar(
+    title: str, rows: Sequence[Dict], label_key: str, value_key: str, series_name: str
+) -> ChartData:
+    labels = tuple(str(row.get(label_key, "")) for row in rows)
+    values = tuple(_number(row.get(value_key)) for row in rows)
+    metadata = tuple(_meta(label=label) for label in labels)
+    return ChartData(
+        kind="bar",
+        title=title,
+        labels=labels,
+        series=(ChartSeries(series_name, values, metadata),),
+        x_label=series_name,
+        y_label="Entidade" if label_key == "name" else "Documento",
+        value_suffix="%" if "Cobertura" in series_name else "",
+    )
+
+
 def chart_to_rows(chart: ChartData) -> List[List[object]]:
     """Return exactly the values displayed by a chart as tabular rows."""
     if chart.kind in {"line", "bar", "stacked"}:

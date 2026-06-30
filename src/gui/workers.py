@@ -20,7 +20,7 @@ class ProcessingWorker(QObject):
         search_terms: List[Tuple[str, bool]] = None,
         enable_sentiment: bool = True,
         enable_emotions: bool = True,
-        enable_president: bool = True,
+        enable_president: bool = False,
         enable_textmetrics: bool = True,
         enable_kwic: bool = True,
         categories=None,

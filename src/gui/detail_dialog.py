@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.gui.charts import ChartDialog
+from src.gui import i18n
 
 POSITIVE_COLOR = QColor("#15803d")
 NEGATIVE_COLOR = QColor("#b4413c")
@@ -62,10 +63,13 @@ def _fmt(value) -> str:
 
 
 class ResultDetailDialog(QDialog):
-    def __init__(self, result: Dict, parent=None):
+    def __init__(self, result: Dict, parent=None, language: str = i18n.DEFAULT_LANGUAGE):
         super().__init__(parent)
         self._result = result
-        self.setWindowTitle(f"Detalhes — {result.get('filename', '')}")
+        self.language = i18n.normalize_language(language)
+        self.setWindowTitle(
+            f"{'Details' if self.language == 'en' else 'Detalhes'} — {result.get('filename', '')}"
+        )
         self.resize(1020, 720)
         self.setStyleSheet("QDialog { background-color: #f4f1ea; }")
 
@@ -75,52 +79,52 @@ class ResultDetailDialog(QDialog):
 
         tabs = QTabWidget()
         tabs.setStyleSheet(_TAB_STYLE)
-        tabs.addTab(self._build_summary_tab(result), "Resumo")
+        tabs.addTab(self._build_summary_tab(result), self._ui("Resumo", "Summary"))
 
         sentences = result.get("sentiment_sentences", [])
         if sentences:
-            tabs.addTab(self._build_sentences_tab(sentences), "Sentimento por sentença")
+            tabs.addTab(self._build_sentences_tab(sentences), self._ui("Sentimento por sentença", "Sentiment by sentence"))
 
         keywords = result.get("keyword_freq", [])
         if keywords:
-            tabs.addTab(self._build_keywords_tab(keywords), "Palavras-chave")
+            tabs.addTab(self._build_keywords_tab(keywords), self._ui("Palavras-chave", "Keywords"))
 
         ngrams = result.get("ngram_freq", [])
         if ngrams:
-            tabs.addTab(self._build_ngrams_tab(ngrams), "N-gramas")
+            tabs.addTab(self._build_ngrams_tab(ngrams), self._ui("N-gramas", "N-grams"))
 
         emotions = result.get("emotion_words", {})
         if any(emotions.values()):
-            tabs.addTab(self._build_emotions_tab(emotions), "Emoções")
+            tabs.addTab(self._build_emotions_tab(emotions), self._ui("Emoções", "Emotions"))
 
         categories = result.get("category_results", {})
         if categories:
-            tabs.addTab(self._build_categories_tab(categories), "Categorias")
+            tabs.addTab(self._build_categories_tab(categories), self._ui("Categorias", "Categories"))
 
         geography = result.get("geo_mentions", [])
         if geography:
-            tabs.addTab(self._build_geography_tab(geography), "Território")
+            tabs.addTab(self._build_geography_tab(geography), self._ui("Território", "Territory"))
 
         kwic = result.get("kwic", [])
         if kwic:
-            tabs.addTab(self._build_kwic_tab(kwic), "Concordância (KWIC)")
+            tabs.addTab(self._build_kwic_tab(kwic), self._ui("Concordância (KWIC)", "Concordance (KWIC)"))
 
         cooccurrence = result.get("cooccurrence", [])
         if cooccurrence:
-            tabs.addTab(self._build_cooccurrence_tab(cooccurrence), "Co-ocorrência")
+            tabs.addTab(self._build_cooccurrence_tab(cooccurrence), self._ui("Co-ocorrência", "Co-occurrence"))
 
         excluded = result.get("excluded_pages", [])
         if excluded:
-            tabs.addTab(self._build_excluded_tab(excluded), "Páginas excluídas")
+            tabs.addTab(self._build_excluded_tab(excluded), self._ui("Páginas excluídas", "Excluded pages"))
 
         layout.addWidget(tabs)
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        btn_charts = QPushButton("Gráficos deste documento")
+        btn_charts = QPushButton(self._ui("Gráficos deste documento", "Charts for this document"))
         btn_charts.clicked.connect(self._open_charts)
         btn_row.addWidget(btn_charts)
-        btn_close = QPushButton("Fechar")
+        btn_close = QPushButton(self._ui("Fechar", "Close"))
         btn_close.setStyleSheet(
             "QPushButton { background-color: #0f766e; color: #ffffff; border: none;"
             " border-radius: 9px; padding: 10px 24px; font-weight: 600; min-width: 100px; }"
@@ -131,7 +135,7 @@ class ResultDetailDialog(QDialog):
         layout.addLayout(btn_row)
 
     def _open_charts(self):
-        dialog = ChartDialog([self._result], self)
+        dialog = ChartDialog([self._result], self, language=self.language)
         dialog.exec()
 
     # ---- tabs -----------------------------------------------------------
@@ -139,9 +143,12 @@ class ResultDetailDialog(QDialog):
     def _build_summary_tab(self, result: Dict) -> QWidget:
         rows = [
             ("Arquivo", result.get("filename", "")),
+            ("Título", result.get("title", "")),
+            ("Autores", result.get("authors_display", "")),
+            ("Afiliações", result.get("affiliations_display", "")),
             ("Ano", result.get("year", "")),
             ("Tipo de documento", result.get("document", "")),
-            ("Presidente", result.get("president", "")),
+            ("Status dos metadados", result.get("metadata_status", "")),
             ("Total de páginas", result.get("total_pages", "")),
             ("Páginas com texto", result.get("pages_with_text", "")),
             ("Páginas com OCR", result.get("ocr_pages_count", "")),
@@ -157,6 +164,8 @@ class ResultDetailDialog(QDialog):
                 ("% sentenças negativas", result.get("sent_pct_negativo", "")),
                 ("% sentenças neutras", result.get("sent_pct_neutro", "")),
                 ("Nº de sentenças analisadas", result.get("sent_n_sentencas", "")),
+                ("IC95% do sentimento", f"{result.get('sent_ci_low', '')} a {result.get('sent_ci_high', '')}"),
+                ("Cobertura do léxico de sentimento", f"{result.get('sent_lexicon_coverage_pct', '')}%"),
             ]
         if "leg_indice" in result:
             rows += [
@@ -166,6 +175,8 @@ class ResultDetailDialog(QDialog):
                 ("Sílabas por palavra", result.get("leg_silabas_palavra", "")),
                 ("Diversidade lexical (TTR)", result.get("lex_ttr", "")),
                 ("Índice de Guiraud", result.get("lex_guiraud", "")),
+                ("Diversidade lexical (MATTR)", result.get("lex_mattr", "")),
+                ("Janela MATTR", result.get("lex_mattr_window", "")),
                 ("Vocabulário (tipos)", result.get("lex_vocabulario", "")),
             ]
         rows.append(("Observações", result.get("observations", "")))
@@ -176,9 +187,9 @@ class ResultDetailDialog(QDialog):
         grid.setHorizontalSpacing(28)
         grid.setVerticalSpacing(8)
         for i, (label, value) in enumerate(rows):
-            lab = QLabel(label)
+            lab = QLabel(i18n.label(label, self.language))
             lab.setStyleSheet("color: #b5670a; font-weight: 700;")
-            val = QLabel(_fmt(value))
+            val = QLabel(i18n.value(_fmt(value), self.language))
             val.setWordWrap(True)
             val.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
             grid.addWidget(lab, i, 0, alignment=Qt.AlignmentFlag.AlignTop)
@@ -358,7 +369,7 @@ class ResultDetailDialog(QDialog):
 
     def _make_table(self, headers: List[str]) -> QTableWidget:
         table = QTableWidget(0, len(headers))
-        table.setHorizontalHeaderLabels(headers)
+        table.setHorizontalHeaderLabels([i18n.label(header, self.language) for header in headers])
         table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         table.setAlternatingRowColors(True)
         table.verticalHeader().setVisible(False)
@@ -366,7 +377,10 @@ class ResultDetailDialog(QDialog):
         return table
 
     def _cell(self, text: str, center: bool = False) -> QTableWidgetItem:
-        item = QTableWidgetItem(text)
+        item = QTableWidgetItem(i18n.value(str(text), self.language))
         if center:
             item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
         return item
+
+    def _ui(self, pt: str, en: str) -> str:
+        return en if self.language == "en" else pt

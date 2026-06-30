@@ -10,7 +10,9 @@ from openpyxl.utils import get_column_letter
 
 from .analysis import ColumnSpec, build_column_specs, build_default_analyzers
 from .corpus_summary import build_corpus_summary, has_multiple_years
+from .corpus_analysis import build_corpus_analyses
 from .methodology_report import build_methodology_report, flatten_methodology_rows
+from src.gui import i18n
 
 HEADER_FILL = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
 TERM_HEADER_FILL = PatternFill(
@@ -24,6 +26,7 @@ THIN_BORDER = Border(
     top=Side(style="thin", color="CCCCCC"),
     bottom=Side(style="thin", color="CCCCCC"),
 )
+_LANGUAGE = "pt"
 
 
 def export_to_xlsx(
@@ -31,6 +34,7 @@ def export_to_xlsx(
     output_path: str,
     column_specs: Optional[List[ColumnSpec]] = None,
     methodology_options: Optional[Dict] = None,
+    language: str = "pt",
 ) -> None:
     """Write results to XLSX.
 
@@ -39,12 +43,14 @@ def export_to_xlsx(
     from the term columns present in the results, preserving backward
     compatibility with callers that do not pass an explicit schema.
     """
+    global _LANGUAGE
+    _LANGUAGE = i18n.normalize_language(language)
     if column_specs is None:
         column_specs = _infer_column_specs(results)
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "Contagem de Palavras"
+    ws.title = _l("Contagem de Palavras")
 
     for col_idx, spec in enumerate(column_specs, start=1):
         cell = ws.cell(row=1, column=col_idx, value=spec.label)
@@ -79,11 +85,95 @@ def export_to_xlsx(
     _write_emotion_sheet(wb, results)
     _write_geography_sheet(wb, results)
     _write_cooccurrence_sheet(wb, results)
+    _write_segment_sheet(wb, results)
     _write_corpus_summary_sheet(wb, results)
+    _write_corpus_analysis_sheets(wb, results)
     _write_methodology_sheet(wb, results, methodology_options)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     wb.save(output_path)
+
+
+def _write_segment_sheet(wb: Workbook, results: List[Dict]) -> None:
+    rows = [
+        [doc_index, result.get("filename", ""), segment.get("segment_id", ""), segment.get("page_start", ""), segment.get("page_end", ""), segment.get("word_count", ""), segment.get("text", "")]
+        for doc_index, result in enumerate(results, start=1)
+        for segment in result.get("segments", [])
+    ]
+    _write_rows_sheet(
+        wb,
+        "Segmentos Temáticos",
+        ["Nº Doc.", "Arquivo", "Segmento", "Página inicial", "Página final", "Palavras", "Texto"],
+        rows,
+    )
+
+
+def _write_corpus_analysis_sheets(wb: Workbook, results: List[Dict]) -> None:
+    analyses = build_corpus_analyses(results)
+    _write_rows_sheet(
+        wb,
+        "Metadados Bibliográficos",
+        ["Arquivo", "Título", "Autores", "Afiliações", "Ano", "Tipo", "Status"],
+        [
+            [
+                result.get("filename", ""),
+                result.get("title", ""),
+                result.get("authors_display", "") or "; ".join(item.get("name", "") for item in result.get("authors", [])),
+                result.get("affiliations_display", "") or "; ".join(item.get("name", "") for item in result.get("affiliations", [])),
+                result.get("publication_year", "") or result.get("year", ""),
+                result.get("document_type", "") or result.get("document", ""),
+                result.get("metadata_status", ""),
+            ]
+            for result in results
+        ],
+    )
+    entity_headers = ["Nome", "Documentos", "Documentos fracionários", "Palavras", "Ano inicial", "Ano final", "Tipos"]
+    for key, title in (("authors", "Autores Consolidados"), ("institutions", "Instituições")):
+        _write_rows_sheet(
+            wb,
+            title,
+            entity_headers,
+            [
+                [row["name"], row["documents"], row["fractional_documents"], row["words"], row["year_start"], row["year_end"], "; ".join(row["document_types"])]
+                for row in analyses["entities"][key]
+            ],
+        )
+    _write_dict_sheet(wb, "Dispersão", analyses["dispersion"])
+    _write_dict_sheet(wb, "Keyness", analyses["keyness"])
+    _write_dict_sheet(wb, "Associação NPMI", analyses["cooccurrence_association"])
+    similarity = analyses["similarity"]
+    _write_rows_sheet(
+        wb,
+        "Similaridade",
+        ["Documento", *similarity["labels"]],
+        [[label, *similarity["matrix"][index]] for index, label in enumerate(similarity["labels"])],
+    )
+    _write_dict_sheet(wb, "Pares de Similaridade", similarity.get("pairs", []))
+    temporal_rows = [
+        {**row, "top_terms": "; ".join(row.get("top_terms", []))}
+        for row in analyses["temporal_change"]
+    ]
+    _write_dict_sheet(wb, "Mudança Lexical", temporal_rows)
+    _write_dict_sheet(wb, "Diagnóstico Sentimento", analyses["sentiment_diagnostics"])
+
+
+def _write_dict_sheet(wb: Workbook, title: str, rows: List[Dict]) -> None:
+    if not rows:
+        return
+    headers = list(rows[0])
+    _write_rows_sheet(wb, title, headers, [[row.get(key, "") for key in headers] for row in rows])
+
+
+def _write_rows_sheet(
+    wb: Workbook, title: str, headers: List[str], rows: List[List[object]]
+) -> None:
+    if not rows:
+        return
+    ws = _detail_sheet(wb, title, headers, [max(12, min(42, len(str(header)) + 4)) for header in headers])
+    for row_index, values in enumerate(rows, start=2):
+        for column_index, value in enumerate(values, start=1):
+            ws.cell(row=row_index, column=column_index, value=value)
+        _style_detail_row(ws, row_index, len(headers))
 
 
 def _infer_column_specs(results: List[Dict]) -> List[ColumnSpec]:
@@ -116,7 +206,7 @@ def _infer_column_specs(results: List[Dict]) -> List[ColumnSpec]:
 
 
 def _write_excluded_sheet(wb: Workbook, results: List[Dict]) -> None:
-    ws2 = wb.create_sheet("Páginas Excluídas")
+    ws2 = wb.create_sheet(_l("Páginas Excluídas"))
     headers2 = [
         "Nº Doc.",
         "Arquivo",
@@ -125,7 +215,7 @@ def _write_excluded_sheet(wb: Workbook, results: List[Dict]) -> None:
         "Palavras na Página",
     ]
     for col_idx, label in enumerate(headers2, start=1):
-        cell = ws2.cell(row=1, column=col_idx, value=label)
+        cell = ws2.cell(row=1, column=col_idx, value=_l(label))
         cell.fill = HEADER_FILL
         cell.font = HEADER_FONT
         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -164,10 +254,10 @@ def _write_sentiment_sheet(wb: Workbook, results: List[Dict]) -> None:
     if not has_detail:
         return
 
-    ws = wb.create_sheet("Sentimento (Sentenças)")
+    ws = wb.create_sheet(_l("Sentimento (Sentenças)"))
     headers = ["Nº Doc.", "Arquivo", "Página", "Sentença", "Compound", "Classe"]
     for col_idx, label in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=label)
+        cell = ws.cell(row=1, column=col_idx, value=_l(label))
         cell.fill = TERM_HEADER_FILL
         cell.font = HEADER_FONT
         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -206,10 +296,10 @@ def _write_keyword_sheet(wb: Workbook, results: List[Dict]) -> None:
     if not has_detail:
         return
 
-    ws = wb.create_sheet("Frequência de Palavras")
+    ws = wb.create_sheet(_l("Frequência de Palavras"))
     headers = ["Nº Doc.", "Arquivo", "Palavra", "Frequência"]
     for col_idx, label in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=label)
+        cell = ws.cell(row=1, column=col_idx, value=_l(label))
         cell.fill = TERM_HEADER_FILL
         cell.font = HEADER_FONT
         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -241,7 +331,7 @@ def _write_kwic_sheet(wb: Workbook, results: List[Dict]) -> None:
     if not has_detail:
         return
 
-    ws = wb.create_sheet("Concordância (KWIC)")
+    ws = wb.create_sheet(_l("Concordância (KWIC)"))
     headers = [
         "Nº Doc.",
         "Arquivo",
@@ -252,7 +342,7 @@ def _write_kwic_sheet(wb: Workbook, results: List[Dict]) -> None:
         "Contexto à direita",
     ]
     for col_idx, label in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=label)
+        cell = ws.cell(row=1, column=col_idx, value=_l(label))
         cell.fill = TERM_HEADER_FILL
         cell.font = HEADER_FONT
         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -288,9 +378,9 @@ def _write_kwic_sheet(wb: Workbook, results: List[Dict]) -> None:
 
 def _detail_sheet(wb: Workbook, title: str, headers: List[str], widths: List[int]):
     """Create a styled detail sheet with a frozen header row."""
-    ws = wb.create_sheet(title)
+    ws = wb.create_sheet(_l(title))
     for col_idx, label in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col_idx, value=label)
+        cell = ws.cell(row=1, column=col_idx, value=_l(label))
         cell.fill = TERM_HEADER_FILL
         cell.font = HEADER_FONT
         cell.alignment = Alignment(horizontal="center", vertical="center")
@@ -524,10 +614,14 @@ def _write_methodology_sheet(
 ) -> None:
     report = build_methodology_report(results, methodology_options)
     ws = _detail_sheet(wb, "Metodologia", ["Item", "Valor"], [30, 100])
-    for row_idx, (key, value) in enumerate(flatten_methodology_rows(report), start=2):
+    for row_idx, (key, value) in enumerate(flatten_methodology_rows(report, _LANGUAGE), start=2):
         ws.cell(row=row_idx, column=1, value=key)
         ws.cell(row=row_idx, column=2, value=value)
         ws.cell(row=row_idx, column=2).alignment = Alignment(
             vertical="top", wrap_text=True
         )
         _style_detail_row(ws, row_idx, 2)
+
+
+def _l(text: str) -> str:
+    return i18n.label(text, _LANGUAGE)

@@ -31,7 +31,7 @@ def test_methodology_report_keeps_files_flags_terms_and_categories():
         },
     )
 
-    assert report["gerado_por"] == "Lupa 1.0"
+    assert report["gerado_por"] == "Lupa 1.0.1"
     assert report["gerado_em"] == "2026-06-12T10:00:00"
     assert report["documentos"] == ["a.txt"]
     assert report["arquivos_origem"] == ["C:/corpus/a.txt"]

@@ -2,6 +2,8 @@
 
 from PyQt6.QtWidgets import QDialog, QHBoxLayout, QPushButton, QTextBrowser, QVBoxLayout
 
+from src.gui import i18n
+
 
 HELP_HTML = """
 <style>
@@ -24,7 +26,7 @@ HELP_HTML = """
 
 <h1>Como usar o Lupa</h1>
 
-<p>Software para análise de conteúdo e métricas textuais de documentos PDF, DOCX e TXT, de forma padronizada e auditável. Voltado à pesquisa acadêmica: contagem, busca de termos, análise de sentimento, emoções discretas, legibilidade, diversidade lexical, palavras-chave, território, co-ocorrência e concordância (KWIC). Inclui suporte opcional a metadados de Mensagens Presidenciais ao Congresso Nacional.</p>
+<p>Software para análise bibliográfica, de conteúdo e métricas textuais de documentos PDF, DOCX e TXT. Detecta e permite revisar título, autores, afiliações, ano e tipo documental; consolida pessoas e instituições e oferece análises comparativas auditáveis.</p>
 
 <h2>Fluxo básico de uso</h2>
 <ol>
@@ -266,7 +268,8 @@ simples entre documentos do mesmo ano.</p>
 <h3>Gráficos interativos</h3>
 <p>O botão <b>Gráficos</b> reúne seis visualizações: série temporal, comparação
 entre documentos, sentimento empilhado, dispersão legibilidade × diversidade
-lexical, matriz de coocorrência e perfil territorial. É possível filtrar ano e
+lexical, matriz de coocorrência, perfil territorial, autores, instituições,
+dispersão DP, keyness, similaridade, NPMI, mudança lexical e cobertura de sentimento. É possível filtrar ano e
 documento, normalizar contagens por mil palavras, ocultar séries, usar a roda do
 mouse para zoom, copiar os dados exibidos e exportar PNG.</p>
 <p>O tamanho dos pontos da dispersão representa palavras do corpus; a cor indica
@@ -371,11 +374,90 @@ da análise.</p>
 <p>Toda a contagem segue regras determinísticas. Processar os mesmos PDFs nas mesmas condições produz exatamente os mesmos resultados. Diferenças entre execuções só ocorrem se houver OCR sobre páginas marginais (qualidade de imagem pode variar a saída).</p>
 """
 
+HELP_HTML_EN = """
+<style>
+    body { font-family: "Segoe UI", sans-serif; color: #1f2933; font-size: 11pt; line-height: 1.55; }
+    h1 { color: #103d3a; font-family: "Georgia", serif; font-size: 18pt; margin-top: 12px; }
+    h2 { color: #0f766e; font-size: 14pt; margin-top: 18px; padding-bottom: 4px; }
+    h3 { color: #b5670a; font-size: 12pt; margin-top: 14px; }
+    code { background: #e9f1ef; color: #115e59; padding: 2px 6px; border-radius: 4px; }
+    pre { background: #faf7f0; color: #1f2933; padding: 12px; border-radius: 8px; border-left: 3px solid #0f766e; }
+    .tip { background: #eef6f4; padding: 12px; border-left: 3px solid #0f766e; border-radius: 6px; margin: 10px 0; }
+    .warn { background: #fbf2e5; padding: 12px; border-left: 3px solid #b5670a; border-radius: 6px; margin: 10px 0; }
+    ul { margin-left: 8px; padding-left: 16px; }
+    li { margin: 4px 0; }
+    .key { background: #e4ddcf; color: #1f2933; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 10pt; }
+</style>
+
+<h1>How to use Lupa</h1>
+
+<p>Lupa is an offline desktop application for bibliographic analysis, content analysis and textual metrics in PDF, DOCX and TXT corpora. It detects and allows review of title, authors, affiliations, year and document type; consolidates people and institutions; and provides auditable comparative analyses.</p>
+
+<h2>Basic workflow</h2>
+<ol>
+    <li><b>Add documents</b> — Drop PDF, DOCX or TXT files into the dotted area or click <code>Add files</code>.</li>
+    <li><b>Optionally define terms</b> — Enter one term or category per line.</li>
+    <li><b>Optionally enable OCR</b> — Use it for scanned PDFs.</li>
+    <li><b>Process</b> — Click <code>Process corpus</code>.</li>
+    <li><b>Export</b> — Save results as XLSX, CSV or JSON.</li>
+</ol>
+
+<h2>Accepted formats</h2>
+<ul>
+    <li><b>PDF:</b> text extraction with PyMuPDF; optional OCR for scanned pages.</li>
+    <li><b>DOCX:</b> paragraphs extracted with <code>python-docx</code> and grouped into approximate text blocks.</li>
+    <li><b>TXT:</b> blocks split by blank lines, with large blocks divided automatically.</li>
+</ul>
+<div class="warn">For DOCX/TXT files, the page number shown in details means text block, not printed page.</div>
+
+<h2>Terms, expressions and coding categories</h2>
+<ul>
+    <li><b>Single word:</b> <code>climate</code> counts word occurrences ignoring case and accents.</li>
+    <li><b>Unquoted expression:</b> <code>climate change</code> searches the sequence with flexible whitespace.</li>
+    <li><b>Quoted expression:</b> <code>"greenhouse effect"</code> requires the literal expression between word boundaries.</li>
+    <li><b>Category:</b> <code>NAME: term1, term2, "phrase"</code> sums all member-term occurrences into one coding category.</li>
+    <li>Blank lines and lines starting with <code>#</code> are ignored.</li>
+</ul>
+
+<h2>Word counting and analytical corpus</h2>
+<p>Lupa reports two counts: the full extracted text and the analytical corpus. The analytical corpus removes pre-textual or non-substantive blocks such as cover pages, catalog records, tables of contents, authority lists and blank pages by documented heuristics. The XLSX export includes an <i>Excluded Pages</i> sheet for manual audit.</p>
+
+<h2>Analyses and methodology</h2>
+<ul>
+    <li><b>Sentiment:</b> LeIA/VADER-PT, sentence by sentence, with compound score, class and audit trail.</li>
+    <li><b>Readability:</b> Flesch adapted to Brazilian Portuguese.</li>
+    <li><b>Lexical diversity:</b> TTR, Guiraud and MATTR.</li>
+    <li><b>Keywords and n-grams:</b> ranked content words and recurring 2-3 word expressions.</li>
+    <li><b>KWIC:</b> keyword-in-context concordance for qualitative reading of occurrences.</li>
+    <li><b>Co-occurrence:</b> searched term pairs appearing in the same sentence; descriptive only, not causal evidence.</li>
+    <li><b>NRC emotions:</b> eight discrete emotions when the editable NRC lexicon file is populated.</li>
+    <li><b>Territorial mentions:</b> Brazilian states, regions and biomes using the editable gazetteer.</li>
+    <li><b>Corpus analyses:</b> consolidated authors/institutions, dispersion, keyness, NPMI, similarity, temporal lexical change and sentiment diagnostics.</li>
+</ul>
+
+<h2>Export (XLSX, CSV, JSON)</h2>
+<p>The XLSX export is formatted for reading and audit and includes a Methodology sheet. CSV creates a folder with the main table, methodology text and detail files when available. JSON preserves public result dictionaries, methodology and corpus-level analyses for reproducible reuse in R or Python.</p>
+
+<h2>Shortcuts</h2>
+<ul>
+    <li><span class="key">Ctrl+O</span> — Add documents</li>
+    <li><span class="key">Ctrl+S</span> — Save project</li>
+    <li><span class="key">Ctrl+Shift+O</span> — Open project</li>
+    <li><span class="key">Ctrl+E</span> — Export results</li>
+    <li><span class="key">Ctrl+Q</span> — Exit</li>
+    <li><span class="key">F1</span> — This help screen</li>
+</ul>
+
+<h2>Reproducibility</h2>
+<p>Processing is deterministic and fully offline. Running the same documents with the same settings produces the same results, except for marginal OCR cases where image quality may affect recognition.</p>
+"""
+
 
 class HelpDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, language: str = i18n.DEFAULT_LANGUAGE):
         super().__init__(parent)
-        self.setWindowTitle("Como usar — Lupa")
+        self.language = i18n.normalize_language(language)
+        self.setWindowTitle("How to use — Lupa" if self.language == "en" else "Como usar — Lupa")
         self.resize(900, 740)
         self.setStyleSheet("QDialog { background-color: #f4f1ea; }")
 
@@ -384,7 +466,7 @@ class HelpDialog(QDialog):
 
         browser = QTextBrowser()
         browser.setOpenExternalLinks(True)
-        browser.setHtml(HELP_HTML)
+        browser.setHtml(HELP_HTML_EN if self.language == "en" else HELP_HTML)
         browser.setStyleSheet("""
             QTextBrowser {
                 background-color: #ffffff;
@@ -410,7 +492,7 @@ class HelpDialog(QDialog):
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        btn_close = QPushButton("Fechar")
+        btn_close = QPushButton("Close" if self.language == "en" else "Fechar")
         btn_close.setStyleSheet("""
             QPushButton {
                 background-color: #0f766e;

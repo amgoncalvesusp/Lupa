@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+title: "Lupa: ferramenta para análise de conteúdo e métricas textuais de corpora documentais"
+message: "If you use this software, please cite it as below."
+type: software
+authors:
+  - family-names: "Gonçalves"
+    given-names: "Adriano Marques"
+    affiliation: "Universidade de Araraquara (UNIARA)"
+  - family-names: "Angeli"
+    given-names: "Thaís"
+    affiliation: "Secretaria de Educação de Araraquara"
+abstract: "Desktop software for auditable content analysis, textual metrics and corpus exploration over PDF, DOCX and TXT documents."
+keywords:
+  - content analysis
+  - textual metrics
+  - corpus analysis
+  - PyQt6
+license: MIT
+version: "1.0.1"
+date-released: "2026-06-20"

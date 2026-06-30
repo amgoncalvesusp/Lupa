@@ -1,12 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-from PyInstaller.utils.hooks import collect_submodules
-
 hiddenimports = ['PyQt6.QtCore', 'PyQt6.QtGui', 'PyQt6.QtWidgets']
-hiddenimports += collect_submodules('fitz')
-hiddenimports += collect_submodules('openpyxl')
-hiddenimports += collect_submodules('docx')
-hiddenimports += collect_submodules('regex')
-hiddenimports += collect_submodules('pytesseract')
 # Vendored LeIA (VADER-PT) sentiment engine — imported lazily.
 hiddenimports += ['src.core.analysis.vendor.leia.leia']
 
@@ -25,7 +18,20 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['PyQt6.QtBluetooth', 'PyQt6.QtCharts', 'PyQt6.QtDBus', 'PyQt6.QtDesigner', 'PyQt6.QtHelp', 'PyQt6.QtMultimedia', 'PyQt6.QtMultimediaWidgets', 'PyQt6.QtNetwork', 'PyQt6.QtOpenGL', 'PyQt6.QtOpenGLWidgets', 'PyQt6.QtPdf', 'PyQt6.QtPdfWidgets', 'PyQt6.QtPositioning', 'PyQt6.QtPrintSupport', 'PyQt6.QtQml', 'PyQt6.QtQuick', 'PyQt6.QtQuick3D', 'PyQt6.QtQuickWidgets', 'PyQt6.QtRemoteObjects', 'PyQt6.QtSensors', 'PyQt6.QtSerialPort', 'PyQt6.QtSpatialAudio', 'PyQt6.QtSql', 'PyQt6.QtSvg', 'PyQt6.QtSvgWidgets', 'PyQt6.QtTest', 'PyQt6.QtTextToSpeech', 'PyQt6.QtWebChannel', 'PyQt6.QtWebEngineCore', 'PyQt6.QtWebEngineWidgets', 'PyQt6.QtWebSockets', 'PyQt6.QtXml'],
+    excludes=[
+        'pandas', 'scipy', 'torch', 'matplotlib', 'pytest', 'sklearn', 'IPython',
+        'notebook', 'PyQt6.QtBluetooth', 'PyQt6.QtCharts', 'PyQt6.QtDBus',
+        'PyQt6.QtDesigner', 'PyQt6.QtHelp', 'PyQt6.QtMultimedia',
+        'PyQt6.QtMultimediaWidgets', 'PyQt6.QtNetwork', 'PyQt6.QtOpenGL',
+        'PyQt6.QtOpenGLWidgets', 'PyQt6.QtPdf', 'PyQt6.QtPdfWidgets',
+        'PyQt6.QtPositioning', 'PyQt6.QtPrintSupport', 'PyQt6.QtQml',
+        'PyQt6.QtQuick', 'PyQt6.QtQuick3D', 'PyQt6.QtQuickWidgets',
+        'PyQt6.QtRemoteObjects', 'PyQt6.QtSensors', 'PyQt6.QtSerialPort',
+        'PyQt6.QtSpatialAudio', 'PyQt6.QtSql', 'PyQt6.QtSvg',
+        'PyQt6.QtSvgWidgets', 'PyQt6.QtTest', 'PyQt6.QtTextToSpeech',
+        'PyQt6.QtWebChannel', 'PyQt6.QtWebEngineCore',
+        'PyQt6.QtWebEngineWidgets', 'PyQt6.QtWebSockets', 'PyQt6.QtXml',
+    ],
     noarchive=False,
     optimize=0,
 )
@@ -51,4 +57,5 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon='src/gui/assets/lupa-icon.ico',
+    version='installer/version_info.txt',
 )

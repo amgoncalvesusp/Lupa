@@ -21,6 +21,7 @@ from .metadata import MetadataAnalyzer
 from .ngrams import NgramAnalyzer
 from .readability import ReadabilityAnalyzer
 from .sentiment import SentimentAnalyzer
+from .segmentation import SegmentationAnalyzer
 from .term_search import TermSearchAnalyzer
 from .word_count import WordCountAnalyzer
 
@@ -40,6 +41,7 @@ __all__ = [
     "NgramAnalyzer",
     "ReadabilityAnalyzer",
     "SentimentAnalyzer",
+    "SegmentationAnalyzer",
     "TermSearchAnalyzer",
     "WordCountAnalyzer",
     "build_default_analyzers",
@@ -49,7 +51,7 @@ __all__ = [
 
 def build_default_analyzers(
     search_terms: List[Tuple[str, bool]] = None,
-    detect_president: bool = True,
+    detect_president: bool = False,
     detect_sentiment: bool = True,
     detect_emotions: bool = True,
     detect_textmetrics: bool = True,
@@ -68,6 +70,7 @@ def build_default_analyzers(
         analyzers.append(KeywordAnalyzer())
         analyzers.append(NgramAnalyzer())
         analyzers.append(GeographyAnalyzer())
+        analyzers.append(SegmentationAnalyzer())
     if detect_sentiment:
         analyzers.append(SentimentAnalyzer())
     if detect_emotions:

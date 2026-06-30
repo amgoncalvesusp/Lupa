@@ -1,7 +1,7 @@
 <#
     Lupa — instalador local (sem dependencias externas).
 
-    Copia dist\Lupa.exe para %LOCALAPPDATA%\Programs\Lupa e cria atalhos no
+    Copia dist\Lupa-installer.exe para %LOCALAPPDATA%\Programs\Lupa e cria atalhos no
     Menu Iniciar e na Area de Trabalho. Nao requer privilegios de administrador
     (instalacao por usuario).
 
@@ -12,7 +12,7 @@ $ErrorActionPreference = "Stop"
 
 $AppName = "Lupa"
 $ProjectDir = Split-Path -Parent $PSScriptRoot
-$ExeSource = Join-Path $ProjectDir "dist\Lupa.exe"
+$ExeSource = Join-Path $ProjectDir "dist\Lupa-installer.exe"
 
 if (-not (Test-Path $ExeSource)) {
     Write-Error "Executavel nao encontrado: $ExeSource`nRode build.bat antes de instalar."

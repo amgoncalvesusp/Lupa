@@ -8,7 +8,7 @@ pytestmark = pytest.mark.integration
 
 
 def test_process_returns_expected_fields(sample_pdf):
-    processor = PDFProcessor(enable_ocr=False)
+    processor = PDFProcessor(enable_ocr=False, detect_president=True)
     result = processor.process(sample_pdf)
 
     assert result["filename"].endswith(".pdf")

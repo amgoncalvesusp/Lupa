@@ -106,7 +106,7 @@ def test_json_round_trip_keeps_public_result_data(tmp_path):
     with out.open(encoding="utf-8") as fh:
         data = json.load(fh)
 
-    assert data["gerado_por"] == "Lupa 1.0"
+    assert data["gerado_por"] == "Lupa 1.0.1"
     assert data["metodologia"]["gerado_em"] == "2026-06-12T10:00:00"
     assert data["documentos"][0]["filename"] == "doc.pdf"
     assert data["documentos"][0]["words_total"] == 42
@@ -121,3 +121,27 @@ def test_json_omits_internal_keys(tmp_path):
 
     assert "_term_clima_total" not in doc
     assert "_skip" not in doc["public_value"]
+
+
+def test_plain_exports_include_corpus_analyses(tmp_path):
+    results = [
+        _result(
+            filename="a.pdf",
+            authors=[{"name": "Ana Souza", "affiliations": ["UFMG"]}],
+            word_counts={"clima": 5},
+        ),
+        _result(
+            filename="b.pdf",
+            year="2021",
+            authors=[{"name": "Bruno Lima"}],
+            word_counts={"energia": 5},
+        ),
+    ]
+    export_to_csv(results, tmp_path / "csv")
+    export_to_json(results, tmp_path / "resultados.json")
+
+    assert (tmp_path / "csv" / "autores_consolidados.csv").exists()
+    assert (tmp_path / "csv" / "similaridade.csv").exists()
+    payload = json.loads((tmp_path / "resultados.json").read_text(encoding="utf-8"))
+    assert "analises_corpus" in payload
+    assert payload["analises_corpus"]["entities"]["authors"][0]["name"]

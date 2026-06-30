@@ -24,7 +24,7 @@ def test_project_round_trip(tmp_path):
     )
     loaded = load_project(path)
 
-    assert loaded["versao"] == 1
+    assert loaded["versao"] == 2
     assert loaded["termos_raw"] == "clima"
     assert loaded["flags"]["ocr"] is True
     assert loaded["arquivos"] == [str(doc)]
@@ -48,3 +48,28 @@ def test_unknown_version_raises_value_error(tmp_path):
 
     with pytest.raises(ValueError):
         load_project(path)
+
+
+def test_v1_project_is_migrated_with_new_research_defaults(tmp_path):
+    path = tmp_path / "legado.lupa.json"
+    path.write_text(
+        json.dumps(
+            {
+                "versao": 1,
+                "termos_raw": "clima",
+                "flags": {"presidente": True},
+                "arquivos": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loaded = load_project(path)
+
+    assert loaded["versao"] == 2
+    assert loaded["flags"]["presidente"] is False
+    assert loaded["metadata_overrides"] == {}
+    assert loaded["entity_aliases"] == {}
+    assert loaded["count_mode"] == "integral"
+    assert loaded["online_metadata"] is False
+    assert loaded["coding_records"] == []

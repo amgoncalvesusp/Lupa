@@ -55,6 +55,15 @@ def test_lexical_diversity_basic():
     assert out["lex_guiraud"] == pytest.approx(1.0, abs=0.01)
 
 
+def test_mattr_uses_moving_windows_and_reports_effective_window():
+    ctx = DocumentContext("d.pdf", ["gato cao rato lobo gato cao rato lobo"], [1], 1)
+    out = LexicalDiversityAnalyzer(window_size=4).run(ctx)
+
+    assert out["lex_mattr"] == 1.0
+    assert out["lex_mattr_window"] == 4
+    assert out["lex_mattr_windows"] == 5
+
+
 def test_lexical_diversity_empty():
     out = LexicalDiversityAnalyzer().run(DocumentContext("d.pdf", [""], [], 1))
     assert out["lex_ttr"] == 0.0

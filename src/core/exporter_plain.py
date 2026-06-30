@@ -8,8 +8,10 @@ from typing import Any, Dict, Iterable, List, Optional
 from .analysis import ColumnSpec
 from .exporter import _infer_column_specs
 from .methodology_report import build_methodology_report, render_methodology_text
+from .corpus_analysis import build_corpus_analyses
+from src.gui import i18n
 
-APP_VERSION = "1.0"
+APP_VERSION = "1.0.1"
 
 
 def export_to_csv(
@@ -17,6 +19,7 @@ def export_to_csv(
     output_dir: str | Path,
     column_specs: Optional[List[ColumnSpec]] = None,
     methodology_options: Optional[Dict] = None,
+    language: str = "pt",
 ) -> None:
     """Write the main result table and available detail tables as CSV files."""
     out_dir = Path(output_dir)
@@ -25,33 +28,33 @@ def export_to_csv(
         column_specs = _infer_column_specs(results)
 
     _write_csv(
-        out_dir / "resultados.csv",
+        out_dir / ("results.csv" if language == "en" else "resultados.csv"),
         [spec.label for spec in column_specs],
         _main_rows(results, column_specs),
     )
     _write_csv_if_rows(
         out_dir / "sentencas.csv",
-        ["Nº Doc.", "Arquivo", "Página", "Sentença", "Compound", "Classe"],
+        _headers(["Nº Doc.", "Arquivo", "Página", "Sentença", "Compound", "Classe"], language),
         _sentiment_rows(results),
     )
     _write_csv_if_rows(
         out_dir / "palavras.csv",
-        ["Nº Doc.", "Arquivo", "Palavra", "Frequência"],
+        _headers(["Nº Doc.", "Arquivo", "Palavra", "Frequência"], language),
         _keyword_rows(results),
     )
     _write_csv_if_rows(
         out_dir / "ngramas.csv",
-        ["Nº Doc.", "Arquivo", "Expressão", "N", "Frequência"],
+        _headers(["Nº Doc.", "Arquivo", "Expressão", "N", "Frequência"], language),
         _ngram_rows(results),
     )
     _write_csv_if_rows(
         out_dir / "categorias.csv",
-        ["Nº Doc.", "Arquivo", "Categoria", "Termo", "PDF Completo", "Corpus Analítico"],
+        _headers(["Nº Doc.", "Arquivo", "Categoria", "Termo", "PDF Completo", "Corpus Analítico"], language),
         _category_rows(results),
     )
     _write_csv_if_rows(
         out_dir / "kwic.csv",
-        [
+        _headers([
             "Nº Doc.",
             "Arquivo",
             "Página",
@@ -59,32 +62,42 @@ def export_to_csv(
             "Contexto à esquerda",
             "Ocorrência",
             "Contexto à direita",
-        ],
+        ], language),
         _kwic_rows(results),
     )
     _write_csv_if_rows(
         out_dir / "emocoes.csv",
-        ["Nº Doc.", "Arquivo", "Emoção", "Palavra", "Contagem"],
+        _headers(["Nº Doc.", "Arquivo", "Emoção", "Palavra", "Contagem"], language),
         _emotion_rows(results),
     )
     _write_csv_if_rows(
         out_dir / "territorio.csv",
-        ["Nº Doc.", "Arquivo", "Local", "Tipo", "UF", "Contagem"],
+        _headers(["Nº Doc.", "Arquivo", "Local", "Tipo", "UF", "Contagem"], language),
         _geography_rows(results),
     )
     _write_csv_if_rows(
         out_dir / "coocorrencia.csv",
-        ["Nº Doc.", "Arquivo", "Termo A", "Termo B", "Sentenças"],
+        _headers(["Nº Doc.", "Arquivo", "Termo A", "Termo B", "Sentenças"], language),
         _cooccurrence_rows(results),
     )
     _write_csv_if_rows(
         out_dir / "paginas_excluidas.csv",
-        ["Nº Doc.", "Arquivo", "Página", "Motivo da Exclusão", "Palavras na Página"],
+        _headers(["Nº Doc.", "Arquivo", "Página", "Motivo da Exclusão", "Palavras na Página"], language),
         _excluded_rows(results),
     )
+    _write_csv_if_rows(
+        out_dir / "segmentos.csv",
+        _headers(["Nº Doc.", "Arquivo", "Segmento", "Página inicial", "Página final", "Palavras", "Texto"], language),
+        (
+            [doc_index, result.get("filename", ""), segment.get("segment_id", ""), segment.get("page_start", ""), segment.get("page_end", ""), segment.get("word_count", ""), segment.get("text", "")]
+            for doc_index, result in enumerate(results, start=1)
+            for segment in result.get("segments", [])
+        ),
+    )
+    _write_corpus_csvs(out_dir, results, language)
     report = build_methodology_report(results, methodology_options)
-    (out_dir / "metodologia.txt").write_text(
-        render_methodology_text(report),
+    (out_dir / ("methodology.txt" if language == "en" else "metodologia.txt")).write_text(
+        render_methodology_text(report, language),
         encoding="utf-8",
     )
 
@@ -93,6 +106,7 @@ def export_to_json(
     results: List[Dict],
     output_path: str | Path,
     methodology_options: Optional[Dict] = None,
+    language: str = "pt",
 ) -> None:
     """Write a single JSON file with complete public result dictionaries."""
     path = Path(output_path)
@@ -101,11 +115,44 @@ def export_to_json(
         "gerado_por": f"Lupa {APP_VERSION}",
         "metodologia": build_methodology_report(results, methodology_options),
         "documentos": [_remove_internal_keys(result) for result in results],
+        "analises_corpus": build_corpus_analyses(results),
     }
     path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
+
+
+def _write_corpus_csvs(out_dir: Path, results: List[Dict], language: str = "pt") -> None:
+    analyses = build_corpus_analyses(results)
+    for key, filename in (("authors", "autores_consolidados.csv"), ("institutions", "instituicoes.csv")):
+        rows = analyses["entities"][key]
+        _write_dict_csv(out_dir / filename, rows)
+    for key, filename in (
+        ("dispersion", "dispersao.csv"),
+        ("keyness", "keyness.csv"),
+        ("cooccurrence_association", "associacao_npmi.csv"),
+        ("temporal_change", "mudanca_lexical.csv"),
+        ("sentiment_diagnostics", "diagnostico_sentimento.csv"),
+    ):
+        rows = [
+            {field: "; ".join(value) if isinstance(value, list) else value for field, value in row.items()}
+            for row in analyses[key]
+        ]
+        _write_dict_csv(out_dir / filename, rows)
+    similarity = analyses["similarity"]
+    _write_csv_if_rows(
+        out_dir / "similaridade.csv",
+        _headers(["Documento", *similarity["labels"]], language),
+        ([label, *similarity["matrix"][index]] for index, label in enumerate(similarity["labels"])),
+    )
+
+
+def _write_dict_csv(path: Path, rows: List[Dict]) -> None:
+    if not rows:
+        return
+    headers = list(rows[0])
+    _write_csv(path, headers, ([row.get(header, "") for header in headers] for row in rows))
 
 
 def _main_rows(results: List[Dict], column_specs: List[ColumnSpec]) -> Iterable[List[Any]]:
@@ -217,6 +264,10 @@ def _write_csv(path: Path, headers: List[str], rows: Iterable[List[Any]]) -> Non
         writer = csv.writer(fh, delimiter=";", lineterminator="\n")
         writer.writerow(headers)
         writer.writerows(rows)
+
+
+def _headers(headers: List[str], language: str) -> List[str]:
+    return [i18n.label(header, language) for header in headers]
 
 
 def _remove_internal_keys(value: Any) -> Any:

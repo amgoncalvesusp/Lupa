@@ -32,6 +32,8 @@ class DocumentContext:
     analytical_page_numbers: List[int]
     total_pages: int
     stats: Dict[str, int] = field(default_factory=dict)
+    source_path: str = ""
+    source_metadata: Dict[str, str] = field(default_factory=dict)
 
 
 @runtime_checkable

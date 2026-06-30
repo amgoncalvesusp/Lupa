@@ -1,5 +1,7 @@
 # Lupa — Plano de Implementação (próximas análises)
 
+> English translation: [IMPLEMENTATION_PLAN.en.md](IMPLEMENTATION_PLAN.en.md)
+
 > **Para a IA implementadora:** este documento é autocontido. Leia a seção
 > "Contexto e convenções" antes de qualquer código. Implemente as fases na
 > ordem. Cada fase tem arquivos exatos, estruturas de dados, critérios de

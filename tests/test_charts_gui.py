@@ -89,12 +89,15 @@ def test_canvas_renders_all_visual_modes(app, results):
         assert sampled_colors != {"#ffffff"}
 
 
-def test_dialog_switches_between_six_chart_types(app, results):
+def test_dialog_switches_between_all_chart_types(app, results):
     dialog = ChartDialog(results)
     workspace = dialog.workspace
-    assert workspace.chart_type.count() == 6
+    assert workspace.chart_type.count() == 14
     assert workspace.normalize.isEnabled()
-    expected = ["line", "bar", "stacked", "scatter", "heatmap", "bar"]
+    expected = [
+        "line", "bar", "stacked", "scatter", "heatmap", "bar",
+        "bar", "bar", "scatter", "bar", "heatmap", "heatmap", "bar", "bar",
+    ]
     for index, kind in enumerate(expected):
         workspace.chart_type.setCurrentIndex(index)
         app.processEvents()
@@ -151,7 +154,26 @@ def test_main_window_uses_sidebar_workbench(app):
     assert not window.windowIcon().isNull()
     assert window.file_list is window.setup_workspace.file_list
     assert window.results_table is window.results_workspace.results_table
+    assert window.president_checkbox.isHidden()
+    assert not window.president_checkbox.isChecked()
+    assert window.results_workspace.result_tabs.count() == 2
     window.close()
+
+
+def test_results_workspace_exposes_written_corpus_tables(app, results):
+    from src.core.corpus_analysis import build_corpus_analyses
+    from src.gui.workspace import ResultsWorkspace
+
+    enriched = [
+        {**row, "authors": [{"name": "Ana Souza", "affiliations": ["UFMG"]}], "word_counts": {"clima": 2}}
+        for row in results
+    ]
+    workspace = ResultsWorkspace()
+    workspace.set_results_summary(enriched)
+    workspace.set_corpus_analyses(build_corpus_analyses(enriched))
+
+    assert workspace.corpus_table.rowCount() == 1
+    assert workspace.corpus_table.horizontalHeaderItem(0).text() == "Nome"
 
 
 def test_sidebar_navigation_updates_workspace_and_header(app):

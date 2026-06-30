@@ -22,6 +22,7 @@ def test_default_set_includes_all_analyzers():
         "keywords",
         "ngrams",
         "geography",
+        "segmentation",
         "sentiment",
         "emotions",
         "term_search",
